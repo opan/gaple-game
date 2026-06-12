@@ -31,8 +31,9 @@ particles), and future native exports.
 
 ## Decision
 
-Use **Godot 4.4.x (latest stable 4.x) with GDScript** for client, server, and
-shared game logic, exporting the client to **Web (HTML5/wasm)**.
+Use the **latest stable Godot 4.x with GDScript** for client, server, and
+shared game logic, exporting the client to **Web (HTML5/wasm)**. The version is
+pinned per-checkout; as of Phase 0 (2026-06-12) this is **Godot 4.6.3**.
 
 Mitigations for Godot-on-web weaknesses:
 

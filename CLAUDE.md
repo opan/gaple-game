@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this project is
 
 A web-based multiplayer **Gaple** game (traditional Indonesian double-six
-dominoes), built with **Godot 4.4 / GDScript**, exported to the browser, with
+dominoes), built with **Godot 4.6.3 / GDScript**, exported to the browser, with
 an authoritative headless Godot server. 2–4 players per room, humans and bots
 mixed freely.
 
@@ -67,17 +67,21 @@ If the rules doc is ambiguous, fix the doc first, then the code.
 
 ## Commands (once Phase 0 lands)
 
-Godot version is pinned to 4.4.x — keep CI image and Dockerfile in sync.
+Godot version is pinned to 4.6.3 — keep CI image and Dockerfile in sync.
 
 ```sh
-# Run all unit tests (headless)
-godot --headless -s addons/gut/gut_cmdln.gd -gdir=tests/unit -gexit
+# Run all unit tests (headless). Test dirs are configured in .gutconfig.json.
+# Exit code is 0 on all-pass, 1 on any failure (verified — CI relies on this).
+godot --headless -s addons/gut/gut_cmdln.gd -gconfig=res://.gutconfig.json
 
 # Run a single test script
-godot --headless -s addons/gut/gut_cmdln.gd -gtest=tests/unit/test_rules.gd -gexit
+godot --headless -s addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_rules.gd -gexit
 
-# Run the game server
+# Run the game server (Ctrl-C to stop)
 godot --headless -- --server --port=9000
 
 # Run the client: open the project in the Godot editor and press F5
 ```
+
+The `godot` binary is the Godot 4.6.3 app; on this machine it is symlinked to
+`/opt/homebrew/bin/godot` → `/Applications/Godot.app/Contents/MacOS/Godot`.

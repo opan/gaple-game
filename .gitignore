@@ -1,0 +1,23 @@
+# Godot 4 .gitignore
+#
+# In Godot 4 the regenerable import cache lives in .godot/; the per-asset
+# `*.import` files describe import settings and MUST be committed. Do not add
+# `*.import` here.
+
+# Godot generated cache (regenerated on import; never commit)
+.godot/
+/android/
+
+# Exported builds / artifacts
+/build/
+/export/
+*.pck
+*.wasm
+
+# GUT temporary output (also written under user://, but ignore stray local logs)
+/test_output/
+
+# OS / editor cruft
+.DS_Store
+*.swp
+*.tmp

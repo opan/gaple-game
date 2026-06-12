@@ -1,6 +1,6 @@
 # Gaple — Implementation Plan
 
-A web-based multiplayer Gaple (Indonesian dominoes) game built with **Godot 4.4
+A web-based multiplayer Gaple (Indonesian dominoes) game built with **Godot 4.6
 (GDScript)**, exported to the browser, with an authoritative headless Godot
 server, 2–4 players per room, and free mixing of humans and bots.
 
@@ -34,7 +34,7 @@ agent **without further clarification**. Read these first:
 gaple-game/
 ├── PLAN.md
 ├── README.md                      # how to run client/server/tests locally
-├── project.godot                  # single Godot 4.4 project
+├── project.godot                  # single Godot 4.6 project
 ├── export_presets.cfg             # Web export preset
 ├── main.gd / main.tscn            # bootstrap: --server → headless server, else client UI
 ├── core/                          # PURE rules engine (ADR-003) — no Node, no net, no UI
@@ -162,7 +162,7 @@ static func blocked_winner(state: GameState) -> int   # GAME_RULES §6.2 incl. t
 
 Tasks:
 
-1. Install Godot **4.4.x stable**; record the exact version in `README.md` and
+1. Install Godot **4.6.3 stable**; record the exact version in `README.md` and
    pin it everywhere (CI image, Dockerfile).
 2. `project.godot`: project name "Gaple", main scene `main.tscn`, viewport
    1280×720, stretch mode `canvas_items`, aspect `expand` (works portrait-ish

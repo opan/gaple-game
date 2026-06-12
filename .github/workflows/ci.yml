@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    name: Unit tests (GUT)
+    runs-on: ubuntu-latest
+    # Pinned to the project's Godot version (see README / CLAUDE.md).
+    # Keep this tag in sync with the installed engine and deploy/Dockerfile.
+    container:
+      image: barichello/godot-ci:4.6.3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Import project (generates .godot import cache)
+        run: godot --headless --import
+        # First import can leak harmless ObjectDB warnings; ignore its noise.
+        continue-on-error: true
+
+      - name: Run GUT suite
+        run: godot --headless -s addons/gut/gut_cmdln.gd -gconfig=res://.gutconfig.json
