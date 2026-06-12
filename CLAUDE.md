@@ -9,11 +9,18 @@ dominoes), built with **Godot 4.6.3 / GDScript**, exported to the browser, with
 an authoritative headless Godot server. 2–4 players per room, humans and bots
 mixed freely.
 
-**Current state: Phases 0–1 done.** Project bootstrap plus the pure `core/`
-rules engine (`tile`, `domino_set`, `game_state`, `gaple_game`) with a full GUT
-suite (43 tests) and a 10k-round fuzz harness (`tools/fuzz_playout.gd`). Next is
-Phase 2 (local single-player UI). Implementation follows the phases in `PLAN.md`,
-in order; each phase has acceptance criteria that must pass before the next.
+**Current state: Phases 0–2 done.** Project bootstrap; the pure `core/` rules
+engine (`tile`, `domino_set`, `game_state`, `gaple_game`, `protocol`,
+`bot_policy`); and the local single-player game in `client/` (`local_game_driver`
++ `scenes/`). Full GUT suite (73 tests) plus a 10k-round fuzz harness
+(`tools/fuzz_playout.gd`). Next is Phase 3 (authoritative server). Implementation
+follows the phases in `PLAN.md`, in order; each phase has acceptance criteria
+that must pass before the next.
+
+Phase 2 detail: `docs/PHASE_2_PLAN.md`. Key seams: the UI renders only from wire
+messages emitted by `LocalGameDriver` (Phase 4 swaps it for a network connection
+unchanged); `core/protocol.gd` is the shared wire contract; the driver enriches
+`turn_started`/`round_over` with data the pure engine lacks.
 
 ## Document hierarchy (read before writing code)
 

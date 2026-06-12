@@ -25,9 +25,9 @@ func _run_server(args: PackedStringArray) -> void:
 
 
 func _run_client() -> void:
-	print("[Gaple] Client placeholder — main menu lands in Phase 4.")
-	# Phase 4 replaces this with:
-	#   get_tree().change_scene_to_file("res://client/scenes/main_menu.tscn")
+	# Phase 2: the local practice-vs-bots client shell. Phase 4 expands this
+	# into the full menu/lobby/network flow.
+	add_child(AppRoot.new())
 
 
 ## Parse `--port=NNNN` from the user args, falling back to DEFAULT_PORT.

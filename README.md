@@ -8,15 +8,28 @@ client and an authoritative headless server.
 
 ## Status
 
-Early development. **Phases 0–1 are complete** — project bootstrap and the pure
-rules engine (`core/`) with a full GUT test suite. Next up is Phase 2 (the local
-single-player UI). See `PLAN.md` for the phased roadmap and `docs/GAME_RULES.md`
-for the exact rules.
+Early development. **Phases 0–2 are complete** — project bootstrap, the pure
+rules engine (`core/`), and the local single-player game (play vs 1–3 bots with
+the full table UI). Next up is Phase 3 (the authoritative server). See `PLAN.md`
+for the phased roadmap, `docs/PHASE_2_PLAN.md` for the Phase 2 detail, and
+`docs/GAME_RULES.md` for the exact rules.
 
 Run the rules-engine fuzz harness (random legal playouts):
 
 ```sh
 godot --headless -s tools/fuzz_playout.gd -- --rounds=10000
+```
+
+### Web build
+
+```sh
+# Requires the Godot 4.6.3 Web export templates (editor → Manage Export
+# Templates, or download the matching .tpz).
+mkdir -p build/web
+godot --headless --export-release "Web" build/web/index.html
+
+# Serve locally with the COOP/COEP headers the engine needs, then open the URL:
+python3 tools/serve_web.py 8060 build/web   # http://localhost:8060/
 ```
 
 ## Documentation

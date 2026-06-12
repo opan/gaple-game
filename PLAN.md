@@ -208,28 +208,37 @@ Acceptance criteria:
 
 ## 5. Phase 2 — Local single-player game (≈ 3–4 days)
 
+> **Detailed, executable spec: `docs/PHASE_2_PLAN.md`.** It supersedes this
+> section where they differ and records four reviewed refinements: (R1) build
+> `core/protocol.gd` first; (R2) `LocalGameDriver` extends `Node` (timer access),
+> not `RefCounted`; (R3) tiles are drawn at runtime via `TileFace._draw()` rather
+> than a build-time atlas; (R4) the driver enriches `turn_started`/`round_over`
+> with data the pure engine lacks (deadline, pip_counts, scores, scoreboard).
+
 Goal: the user plays a full offline round against 1–3 bots with the whiteboard
 UI, **before any networking exists**. The client talks to a `LocalGameDriver`
 that has the same surface as the future network connection (emits the same
-event dictionaries from §6), so Phase 4 swaps the driver, not the UI.
+wire messages from §6), so Phase 4 swaps the driver, not the UI.
 
-Tasks:
+Tasks (see `docs/PHASE_2_PLAN.md` §3–§12 for the detail and task DAG):
 
+0. `core/protocol.gd` — message types, version, builders, engine-event → wire
+   translation, with `test_protocol.gd`. (Shared with Phase 3.)
 1. `core/bot_policy.gd` per ADR-004, with `test_bot.gd`.
-2. Tile art (§7.1) and `tile_node.tscn` (face/back, selected, disabled states).
-3. `game_table.tscn` per §7 layout; `hand.tscn` fan; `opponent_seat.tscn`.
-4. `LocalGameDriver` (client-side `RefCounted`): wraps `GapleGame` + bot
-   policies + bot delay timers, emits protocol-shaped events via signal
-   `event_received(msg: Dictionary)`.
-5. Interaction: tap/click a tile in hand → legal target end(s) glow on the
-   board; if both ends are legal, both glow and the user clicks one; single
-   legal end plays immediately on tile tap-confirm. Illegal tiles are rendered
-   desaturated and non-interactive (computed via `legal_moves`).
-6. Forced pass: banner "No playable tile — passing…" (1.5 s) then auto-pass.
-7. Turn indicator (highlight active seat), opponent tile counts decrement with
-   a small move animation, played tile flies to the line end (Tween, ~0.25 s).
-8. `round_over.tscn`: winner, reason (domino/blocked), pip table, play again.
-9. A "Practice vs bots" button on `main_menu.tscn` that configures 1–3 bots.
+2. `LocalGameDriver` (`extends Node`): wraps `GapleGame` + bot policies + bot
+   delay timers, emits wire messages via `event_received(msg)`; with
+   `test_local_driver.gd`.
+3. `tile_face.gd` (runtime `_draw()`), `tile_node.tscn`, then `board_line.tscn`,
+   `hand.tscn` fan, `opponent_seat.tscn`.
+4. `game_table.tscn` per §7 layout + interaction state machine: tap a hand tile
+   → legal end(s) glow; both-ends ⇒ user picks; illegal tiles desaturated and
+   non-interactive (from `legal_moves`).
+5. Forced pass: banner "No playable tile — passing…" (1.5 s) then auto-pass.
+6. Turn indicator, opponent count decrement animation, played tile flies to the
+   line end (Tween, ~0.25 s).
+7. `round_over.tscn`: winner, reason (domino/blocked), pip table, cumulative
+   scoreboard, play again.
+8. A "Practice vs bots" menu hook that configures 1–3 bots (N = 2–4).
 
 Acceptance criteria:
 - ✅ Full round vs 3 bots is playable start→finish with mouse only.
