@@ -9,10 +9,11 @@ dominoes), built with **Godot 4.6.3 / GDScript**, exported to the browser, with
 an authoritative headless Godot server. 2–4 players per room, humans and bots
 mixed freely.
 
-**Current state: planning phase — no code exists yet.** The repo contains the
-complete plan and decision records. Implementation follows the phases in
-`PLAN.md`, in order; each phase has acceptance criteria that must pass before
-the next phase starts.
+**Current state: Phases 0–1 done.** Project bootstrap plus the pure `core/`
+rules engine (`tile`, `domino_set`, `game_state`, `gaple_game`) with a full GUT
+suite (43 tests) and a 10k-round fuzz harness (`tools/fuzz_playout.gd`). Next is
+Phase 2 (local single-player UI). Implementation follows the phases in `PLAN.md`,
+in order; each phase has acceptance criteria that must pass before the next.
 
 ## Document hierarchy (read before writing code)
 

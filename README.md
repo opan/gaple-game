@@ -8,8 +8,16 @@ client and an authoritative headless server.
 
 ## Status
 
-Early development. **Phase 0 (project bootstrap) is complete.** See `PLAN.md`
-for the phased roadmap and `docs/GAME_RULES.md` for the exact rules.
+Early development. **Phases 0–1 are complete** — project bootstrap and the pure
+rules engine (`core/`) with a full GUT test suite. Next up is Phase 2 (the local
+single-player UI). See `PLAN.md` for the phased roadmap and `docs/GAME_RULES.md`
+for the exact rules.
+
+Run the rules-engine fuzz harness (random legal playouts):
+
+```sh
+godot --headless -s tools/fuzz_playout.gd -- --rounds=10000
+```
 
 ## Documentation
 
