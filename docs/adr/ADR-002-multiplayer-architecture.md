@@ -32,10 +32,13 @@ project* run headless:
 
 - `godot --headless -- --server --port=9000` boots `server/server_main.gd`
   (selected via a `Main` bootstrap autoload that inspects CLI args).
-- Transport: **WebSocketServer (WSS in production)** using Godot's
-  `WebSocketMultiplayerPeer` in *raw packet* mode — we do **not** use Godot's
-  high-level RPC/scene replication, because the server has no scene tree for
-  game objects and we want an inspectable, versioned protocol.
+- Transport: **raw per-connection WebSockets** (`TCPServer` +
+  `WebSocketPeer.accept_stream`), WSS in production. We do **not** use Godot's
+  high-level RPC/scene replication, and specifically **not**
+  `WebSocketMultiplayerPeer` — it prepends Godot multiplayer-protocol bytes that
+  break browser/standard clients. Raw WebSockets give clean JSON text frames any
+  client (browser, wscat, Godot) can read. (Implementation detail confirmed in
+  Phase 3; see `docs/PHASE_3_PLAN.md` §4.)
 - Protocol: **JSON messages** (one JSON object per WebSocket text frame), schema
   defined in `core/protocol.gd` and documented in `PLAN.md` §6. Every message
   has `{ "t": "<type>", "v": 1, ...payload }`.

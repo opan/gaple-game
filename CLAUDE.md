@@ -9,18 +9,23 @@ dominoes), built with **Godot 4.6.3 / GDScript**, exported to the browser, with
 an authoritative headless Godot server. 2–4 players per room, humans and bots
 mixed freely.
 
-**Current state: Phases 0–2 done.** Project bootstrap; the pure `core/` rules
+**Current state: Phases 0–3 done.** Project bootstrap; the pure `core/` rules
 engine (`tile`, `domino_set`, `game_state`, `gaple_game`, `protocol`,
-`bot_policy`); and the local single-player game in `client/` (`local_game_driver`
-+ `scenes/`). Full GUT suite (73 tests) plus a 10k-round fuzz harness
-(`tools/fuzz_playout.gd`). Next is Phase 3 (authoritative server). Implementation
-follows the phases in `PLAN.md`, in order; each phase has acceptance criteria
-that must pass before the next.
+`bot_policy`, `round_view`); the local single-player game in `client/`
+(`local_game_driver` + `scenes/`); and the authoritative multiplayer server in
+`server/` (`server_main`, `game_server`, `room`, `transport`/`ws_transport`).
+Full GUT suite (100 tests, incl. a real-socket integration test) plus a 10k-round
+fuzz harness. Next is Phase 4 (networked client). Implementation follows `PLAN.md`
+in order; each phase's acceptance criteria must pass before the next.
 
-Phase 2 detail: `docs/PHASE_2_PLAN.md`. Key seams: the UI renders only from wire
-messages emitted by `LocalGameDriver` (Phase 4 swaps it for a network connection
-unchanged); `core/protocol.gd` is the shared wire contract; the driver enriches
-`turn_started`/`round_over` with data the pure engine lacks.
+Per-phase detail: `docs/PHASE_2_PLAN.md`, `docs/PHASE_3_PLAN.md`. Load-bearing
+seams: the UI renders only from wire messages (Phase 4 swaps `LocalGameDriver`
+for a network connection unchanged); `core/protocol.gd` is the shared wire
+contract (outbound builders + inbound parse/validate); `core/round_view.gd` holds
+the event→wire + scoring logic shared by the driver and the server `Room` so they
+can't drift. Server transport is **raw WebSockets** (`TCPServer` +
+`WebSocketPeer.accept_stream`), not `WebSocketMultiplayerPeer` (which corrupts
+JSON for browser clients). JSON numbers arrive as floats — always `int(...)`.
 
 ## Document hierarchy (read before writing code)
 

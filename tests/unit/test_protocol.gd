@@ -69,3 +69,56 @@ func test_from_engine_event_does_not_mutate_source() -> void:
 	Protocol.from_engine_event(ev)
 	assert_true(ev.has("type"), "source event is left untouched")
 	assert_false(ev.has("t"))
+
+
+# --- inbound parsing/validation -----------------------------------------
+
+func test_parse_rejects_bad_json() -> void:
+	var r := Protocol.parse("not json {{")
+	assert_false(r["ok"])
+	assert_eq(r["code"], Protocol.E_BAD_INTENT)
+
+
+func test_parse_rejects_non_object() -> void:
+	assert_eq(Protocol.parse("[1,2,3]")["code"], Protocol.E_BAD_INTENT)
+	assert_eq(Protocol.parse("42")["code"], Protocol.E_BAD_INTENT)
+
+
+func test_parse_rejects_missing_version() -> void:
+	assert_eq(Protocol.parse('{"t":"hello"}')["code"], Protocol.E_BAD_INTENT)
+
+
+func test_parse_flags_version_mismatch() -> void:
+	var r := Protocol.parse('{"t":"hello","v":999}')
+	assert_false(r["ok"])
+	assert_eq(r["code"], Protocol.E_UPDATE_REQUIRED)
+
+
+func test_parse_rejects_missing_type() -> void:
+	assert_eq(Protocol.parse('{"v":1}')["code"], Protocol.E_BAD_INTENT)
+
+
+func test_parse_accepts_valid_message() -> void:
+	var text := JSON.stringify({"t": Protocol.C_PLAY_TILE, "v": Protocol.VERSION, "tile_id": 5, "end": "L"})
+	var r := Protocol.parse(text)
+	assert_true(r["ok"])
+	assert_eq(r["msg"]["t"], Protocol.C_PLAY_TILE)
+
+
+func test_validate_play_tile() -> void:
+	assert_eq(Protocol.validate_client({"t": Protocol.C_PLAY_TILE, "tile_id": 5, "end": "L"}), "")
+	assert_eq(Protocol.validate_client({"t": Protocol.C_PLAY_TILE, "end": "L"}), Protocol.E_BAD_INTENT)
+	assert_eq(Protocol.validate_client({"t": Protocol.C_PLAY_TILE, "tile_id": 99, "end": "L"}), Protocol.E_BAD_INTENT)
+	assert_eq(Protocol.validate_client({"t": Protocol.C_PLAY_TILE, "tile_id": 5, "end": "X"}), Protocol.E_BAD_INTENT)
+
+
+func test_validate_hello_and_join() -> void:
+	assert_eq(Protocol.validate_client({"t": Protocol.C_HELLO, "name": "Opan"}), "")
+	assert_eq(Protocol.validate_client({"t": Protocol.C_HELLO}), Protocol.E_BAD_INTENT)
+	assert_eq(Protocol.validate_client({"t": Protocol.C_JOIN_ROOM, "code": "K7Q2F"}), "")
+	assert_eq(Protocol.validate_client({"t": Protocol.C_JOIN_ROOM}), Protocol.E_BAD_INTENT)
+
+
+func test_validate_fieldless_and_unknown() -> void:
+	assert_eq(Protocol.validate_client({"t": Protocol.C_START_GAME}), "")
+	assert_eq(Protocol.validate_client({"t": "bogus_type"}), Protocol.E_BAD_INTENT)

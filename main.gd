@@ -19,9 +19,15 @@ func _ready() -> void:
 
 func _run_server(args: PackedStringArray) -> void:
 	var port := _parse_port(args)
-	print("[Gaple] Server placeholder — would listen on port %d (real server: Phase 3)." % port)
-	print("[Gaple] Running. Press Ctrl-C to stop.")
-	# The headless SceneTree keeps the process alive until SIGINT / quit().
+	var sm := ServerMain.new()
+	add_child(sm)
+	var err := sm.start(port)
+	if err != OK:
+		printerr("[Gaple] Failed to start server on port %d (error %d)." % [port, err])
+		get_tree().quit(1)
+		return
+	print("[Gaple] Server listening on ws://0.0.0.0:%d  (Ctrl-C to stop)." % port)
+	# The headless SceneTree keeps the process alive (polling) until SIGINT.
 
 
 func _run_client() -> void:

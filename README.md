@@ -8,11 +8,13 @@ client and an authoritative headless server.
 
 ## Status
 
-Early development. **Phases 0–2 are complete** — project bootstrap, the pure
-rules engine (`core/`), and the local single-player game (play vs 1–3 bots with
-the full table UI). Next up is Phase 3 (the authoritative server). See `PLAN.md`
-for the phased roadmap, `docs/PHASE_2_PLAN.md` for the Phase 2 detail, and
-`docs/GAME_RULES.md` for the exact rules.
+Early development. **Phases 0–3 are complete** — project bootstrap, the pure
+rules engine (`core/`), the local single-player game (vs 1–3 bots with the full
+table UI), and the authoritative headless multiplayer server (`server/`) with
+rooms, bots, turn timers, disconnect/reconnect, and host migration. Next up is
+Phase 4 (the networked client). See `PLAN.md` for the roadmap, the
+`docs/PHASE_*_PLAN.md` files for per-phase detail, and `docs/GAME_RULES.md` for
+the exact rules.
 
 Run the rules-engine fuzz harness (random legal playouts):
 
@@ -54,8 +56,11 @@ python3 tools/serve_web.py 8060 build/web   # http://localhost:8060/
 # Client — open the project in the Godot editor and press F5.
 godot --editor          # opens the editor; then F5 to run
 
-# Headless game server (Ctrl-C to stop)
+# Headless multiplayer server (Ctrl-C to stop)
 godot --headless -- --server --port=9000
+
+# Demo: a script client plays a full round vs a server-side bot
+godot --headless -s tools/ws_client.gd -- --url=ws://127.0.0.1:9000 --name=Demo
 ```
 
 The `--server` flag goes after `--` so Godot passes it through as a user arg

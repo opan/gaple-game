@@ -250,6 +250,17 @@ Acceptance criteria:
 
 ## 6. Phase 3 — Server + protocol (≈ 3–4 days)
 
+> **Detailed, executable spec: `docs/PHASE_3_PLAN.md`.** It supersedes this
+> section where they differ and records six reviewed refinements: (R1) the server
+> **auto-passes** a stuck seat — clients never send `pass`; (R2) add **inbound
+> parse/validation** to `core/protocol.gd`; (R3) Room/RoomManager take an
+> **injected transport sink** so the whole thing is unit-testable without
+> sockets; (R4) extract the shared *pure* event→wire/scoring logic into
+> **`core/round_view.gd`** that both the Phase 2 driver and the Room call
+> (composition, not a base class) so they can't drift; (R5) **contiguous logical
+> seats**, host = seat 0;
+> (R6) single-threaded **poll loop**, no locks.
+
 Implement `server/` per ADR-002. **Wire protocol** (all messages JSON, field
 `t` = type, `v` = protocol version `1`):
 

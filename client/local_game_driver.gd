@@ -76,10 +76,13 @@ func human_seat() -> int:
 # --- internals -----------------------------------------------------------
 
 func _announce_round() -> void:
-	_emit(Protocol.game_started(_game.state.num_players, _game.state.current_seat, _game.state.forced_opening_tile))
-	_emit(Protocol.hand(_game.state.hand_dict(_human_seat)))
-	_emit(Protocol.public_state(_game.state.public_dict()))
-	_emit(Protocol.turn_started(_game.state.current_seat))
+	# Local play has no turn timer, so deadline = -1. Only the local human's
+	# hand is routed out (others are bots).
+	var a := RoundView.announce(_game, -1)
+	_emit(a["game_started"])
+	_emit(a["hands"][_human_seat])
+	_emit(a["public_state"])
+	_emit(a["turn_started"])
 
 
 ## Play out bot turns until it is the human's turn or the round ends.
@@ -111,27 +114,7 @@ func _apply(intent: Dictionary) -> void:
 		_emit(Protocol.error(Protocol.E_ILLEGAL_MOVE, res["error"]))
 		return
 	for ev: Dictionary in res["events"]:
-		_emit(_to_wire(ev))
-
-
-func _to_wire(ev: Dictionary) -> Dictionary:
-	match ev["type"]:
-		"turn_started":
-			return Protocol.from_engine_event(ev, {"deadline_unix_ms": -1})
-		"round_over":
-			var pip_counts: Array = []
-			for seat in range(_game.state.num_players):
-				pip_counts.append(_game.pip_count(seat))
-			var scores := GapleGame.round_scores(_game.state)
-			for seat in range(scores.size()):
-				_scoreboard[seat] += scores[seat]
-			return Protocol.from_engine_event(ev, {
-				"pip_counts": pip_counts,
-				"scores": scores,
-				"scoreboard": _scoreboard.duplicate(),
-			})
-		_:
-			return Protocol.from_engine_event(ev)
+		_emit(RoundView.to_wire(_game, ev, _scoreboard, -1))
 
 
 func _emit(msg: Dictionary) -> void:
