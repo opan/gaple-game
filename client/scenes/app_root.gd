@@ -43,7 +43,7 @@ func _show_menu() -> void:
 	name_row.add_child(name_lbl)
 
 	var name_field := LineEdit.new()
-	name_field.custom_minimum_size = Vector2(200, 36)
+	name_field.custom_minimum_size = Vector2(200, 44)
 	name_field.placeholder_text = "Your name"
 	name_field.text = _net.get_player_name() if _net else ""
 	name_row.add_child(name_field)
@@ -76,16 +76,27 @@ func _show_menu() -> void:
 	box.add_child(join_row)
 
 	var code_field := LineEdit.new()
-	code_field.custom_minimum_size = Vector2(120, 36)
+	code_field.custom_minimum_size = Vector2(120, 44)
 	code_field.placeholder_text = "Room code"
 	code_field.max_length = 5
 	join_row.add_child(code_field)
 
 	var join_btn := Button.new()
 	join_btn.text = "Join room"
-	join_btn.custom_minimum_size = Vector2(120, 36)
+	join_btn.custom_minimum_size = Vector2(120, 44)
 	join_btn.pressed.connect(_on_join_room.bind(name_field, code_field))
 	join_row.add_child(join_btn)
+
+	# Mute toggle (top-right corner, persists across screens).
+	var mute_btn := Button.new()
+	mute_btn.text = "🔇" if (has_node("/root/Sfx") and Sfx.muted) else "🔊"
+	mute_btn.position = Vector2(1226, 8)
+	mute_btn.custom_minimum_size = Vector2(44, 44)
+	mute_btn.pressed.connect(func() -> void:
+		if has_node("/root/Sfx"):
+			Sfx.toggle_mute()
+			mute_btn.text = "🔇" if Sfx.muted else "🔊")
+	screen.add_child(mute_btn)
 
 	_rebuild_overlay()
 
@@ -127,6 +138,9 @@ func _start_practice(num_players: int, name_field: LineEdit) -> void:
 func _on_create_room(name_field: LineEdit) -> void:
 	if not _net:
 		return
+	if name_field.text.strip_edges().is_empty():
+		_toast("Please enter your name")
+		return
 	_save_name(name_field)
 	if _net._state == "open":
 		_net.create_room()
@@ -140,6 +154,9 @@ func _on_create_room(name_field: LineEdit) -> void:
 
 func _on_join_room(name_field: LineEdit, code_field: LineEdit) -> void:
 	if not _net:
+		return
+	if name_field.text.strip_edges().is_empty():
+		_toast("Please enter your name")
 		return
 	var code := code_field.text.strip_edges().to_upper()
 	if code.length() != 5:
@@ -170,6 +187,8 @@ func _on_net_event(msg: Dictionary) -> void:
 				Protocol.E_ROOM_NOT_FOUND, Protocol.E_ROOM_FULL, \
 				Protocol.E_ROOM_IN_PROGRESS, Protocol.E_UPDATE_REQUIRED:
 					_toast("Error: %s" % code.replace("_", " ").to_lower())
+				Protocol.E_BAD_INTENT:
+					_toast("Internal error — please refresh")
 
 
 func _on_lobby_game_started() -> void:

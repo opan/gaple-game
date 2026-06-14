@@ -24,6 +24,11 @@ window/stretch/aspect="expand"
 [autoload]
 
 Net="*res://client/net/connection.gd"
+Sfx="*res://client/sfx.gd"
+
+[audio]
+
+buses/default_bus_layout="res://assets/audio/audio_bus_layout.tres"
 
 [rendering]
 

@@ -30,6 +30,7 @@ var _banner: Label
 var _status: Label
 var _overlay: Control
 var _end_game_btn: Button            # host-only; null in local play
+var _play_again_btn: Button          # round-over overlay; null when not showing
 var _countdown_label: Label          # turn deadline ticker; null when no deadline
 var _deadline_unix_ms: int = -1      # -1 = no countdown (local play)
 
@@ -82,10 +83,21 @@ func _ready() -> void:
 	_end_game_btn = Button.new()
 	_end_game_btn.text = "End game"
 	_end_game_btn.position = Vector2(16, 8)
-	_end_game_btn.custom_minimum_size = Vector2(110, 32)
+	_end_game_btn.custom_minimum_size = Vector2(110, 44)
 	_end_game_btn.visible = false
 	_end_game_btn.pressed.connect(_on_end_game_pressed)
 	add_child(_end_game_btn)
+
+	# Mute toggle (top-right, next to countdown).
+	var mute_btn := Button.new()
+	mute_btn.text = "🔇" if (has_node("/root/Sfx") and Sfx.muted) else "🔊"
+	mute_btn.position = Vector2(1240, 8)
+	mute_btn.custom_minimum_size = Vector2(44, 44)
+	mute_btn.pressed.connect(func() -> void:
+		if has_node("/root/Sfx"):
+			Sfx.toggle_mute()
+			mute_btn.text = "🔇" if Sfx.muted else "🔊")
+	add_child(mute_btn)
 
 
 ## Practice entry point: create a local driver, bind, and deal the first round.
@@ -152,16 +164,23 @@ func _on_event(msg: Dictionary) -> void:
 			_update_host_controls()
 			if _my_seat != prev_seat and _num_players > 0:
 				_build_seats(_num_players)   # re-layout when we learn our true seat
+			# Deal animation on the first hand for this round (ui is still WAITING).
+			_hand.set_hand(_human_hand, {}, true)
 		Protocol.S_PUBLIC_STATE:
 			_on_public_state(msg["state"])
 		Protocol.S_TILE_PLAYED:
 			_on_tile_played(msg)
 		Protocol.S_PLAYER_PASSED:
 			# The server/driver auto-passes; we react rather than send a pass.
-			if int(msg["seat"]) == _my_seat:
-				_flash_status("No playable tile — you passed")
-			else:
-				_flash_status("Seat %d passed" % int(msg["seat"]))
+			if has_node("/root/Sfx"):
+				Sfx.play("pass")
+			var pass_text := "No playable tile — you passed" if int(msg["seat"]) == _my_seat \
+				else "Seat %d passed" % int(msg["seat"])
+			_show_banner(pass_text)
+			var tw := create_tween()
+			tw.tween_interval(1.2)
+			tw.tween_property(_banner, "modulate:a", 0.0, 0.4)
+			tw.tween_callback(_hide_banner)
 		Protocol.S_TURN_STARTED:
 			_on_turn_started(msg)
 		Protocol.S_ROUND_OVER:
@@ -171,7 +190,21 @@ func _on_event(msg: Dictionary) -> void:
 		Protocol.S_PLAYER_RECLAIMED:
 			_flash_status("Seat %d reconnected" % int(msg.get("seat", -1)))
 		Protocol.S_ERROR:
-			_flash_status("Error: %s" % msg.get("message", ""))
+			var code: String = msg.get("code", "")
+			match code:
+				Protocol.E_NOT_YOUR_TURN:
+					_toast("Not your turn")
+				Protocol.E_ILLEGAL_MOVE:
+					_toast("Illegal move")
+				Protocol.E_NOT_HOST:
+					_toast("Only the host can do that")
+				Protocol.E_BAD_INTENT:
+					_toast("Internal error — please refresh")
+				_:
+					_toast("Error: %s" % code.replace("_", " ").to_lower())
+			# Re-enable End game button so the host can retry.
+			if is_instance_valid(_end_game_btn):
+				_end_game_btn.disabled = false
 
 
 func _on_game_started(msg: Dictionary) -> void:
@@ -180,6 +213,8 @@ func _on_game_started(msg: Dictionary) -> void:
 	_line = []
 	_clear_overlay()
 	_build_seats(_num_players)
+	if has_node("/root/Sfx"):
+		Sfx.play("deal")
 
 
 func _on_public_state(s: Dictionary) -> void:
@@ -203,7 +238,9 @@ func _on_tile_played(msg: Dictionary) -> void:
 		_line.push_back(tid)
 	_left_end = msg["new_left_end"]
 	_right_end = msg["new_right_end"]
-	_board.set_line(_line, _left_end, _right_end)
+	_board.set_line(_line, _left_end, _right_end, msg["end"])
+	if has_node("/root/Sfx"):
+		Sfx.play("place")
 
 	if seat == _my_seat:
 		_human_hand.erase(tid)
@@ -262,6 +299,8 @@ func _on_round_over(msg: Dictionary) -> void:
 	_hide_banner()
 	for s: int in _seats:
 		_seats[s].set_active(false)
+	if has_node("/root/Sfx"):
+		Sfx.play("win" if msg.get("winner_seat", -1) == _my_seat else "lose")
 	_show_round_over(msg)
 
 
@@ -368,6 +407,7 @@ func _make_label(rect: Rect2, color: Color) -> Label:
 
 func _show_banner(text: String) -> void:
 	_banner.text = text
+	_banner.modulate.a = 1.0
 	_banner.visible = true
 
 
@@ -416,10 +456,10 @@ func _show_round_over(msg: Dictionary) -> void:
 	# Host sees "Play again"; non-host sees a waiting label.
 	var is_host := _host_seat < 0 or _my_seat == _host_seat  # -1 = local play
 	if is_host:
-		var again := Button.new()
-		again.text = "Play again"
-		again.pressed.connect(_on_play_again)
-		box.add_child(again)
+		_play_again_btn = Button.new()
+		_play_again_btn.text = "Play again"
+		_play_again_btn.pressed.connect(_on_play_again)
+		box.add_child(_play_again_btn)
 	else:
 		var waiting := Label.new()
 		waiting.text = "Waiting for host to start next round…"
@@ -433,6 +473,16 @@ func _show_round_over(msg: Dictionary) -> void:
 
 	add_child(_overlay)
 
+	# Fade the overlay in.
+	_overlay.modulate.a = 0.0
+	create_tween().tween_property(_overlay, "modulate:a", 1.0, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+	# Post-fade decoration: confetti for a win, "BLOCKED" stamp for a blocked round.
+	if reason == "DOMINO" and winner == _my_seat:
+		_spawn_confetti()
+	elif reason == "BLOCKED":
+		_spawn_blocked_stamp()
+
 
 func _update_host_controls() -> void:
 	if not is_instance_valid(_end_game_btn):
@@ -443,11 +493,11 @@ func _update_host_controls() -> void:
 
 
 func _on_end_game_pressed() -> void:
-	# Confirm dialog → send end_game.
 	var dialog := ConfirmationDialog.new()
 	dialog.dialog_text = "End the current round? No scores will be recorded."
 	dialog.title = "End game"
 	dialog.confirmed.connect(func():
+		_end_game_btn.disabled = true
 		if _client:
 			_client.end_game() if _client.has_method("end_game") else null
 		dialog.queue_free())
@@ -457,8 +507,51 @@ func _on_end_game_pressed() -> void:
 
 
 func _on_play_again() -> void:
+	if is_instance_valid(_play_again_btn):
+		_play_again_btn.disabled = true
 	_clear_overlay()
 	_client.play_again()
+
+
+func _toast(text: String) -> void:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_color_override("font_color", Color(1, 0.4, 0.4))
+	lbl.position = Vector2(340, 440)
+	lbl.size = Vector2(600, 30)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(lbl)
+	get_tree().create_timer(3.0).timeout.connect(lbl.queue_free)
+
+
+func _spawn_confetti() -> void:
+	var p := CPUParticles2D.new()
+	p.position = Vector2(640, 360)
+	p.amount = 40
+	p.lifetime = 1.0
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.spread = 180.0
+	p.gravity = Vector2(0, 50)
+	p.initial_velocity_min = 80.0
+	p.initial_velocity_max = 200.0
+	p.color = Color(1.0, 0.84, 0.27)
+	_overlay.add_child(p)
+	p.emitting = true
+
+
+func _spawn_blocked_stamp() -> void:
+	var lbl := Label.new()
+	lbl.text = "BLOCKED"
+	lbl.add_theme_font_size_override("font_size", 52)
+	lbl.add_theme_color_override("font_color", Color(1, 0.25, 0.25))
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.position = Vector2(390, 160)
+	lbl.size = Vector2(500, 70)
+	lbl.pivot_offset = Vector2(250, 35)
+	lbl.scale = Vector2(2.0, 2.0)
+	_overlay.add_child(lbl)
+	create_tween().tween_property(lbl, "scale", Vector2(1.0, 1.0), 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _clear_overlay() -> void:

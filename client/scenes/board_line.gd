@@ -33,7 +33,8 @@ func _on_zone_input(event: InputEvent, which: String) -> void:
 
 
 ## line_ids: played tiles left→right. Ends are the open pip values (for labels).
-func set_line(line_ids: Array, _left_end: int, _right_end: int) -> void:
+## played_end: "L", "R", or "" (empty = initial deal / resync, no slide animation).
+func set_line(line_ids: Array, _left_end: int, _right_end: int, played_end: String = "") -> void:
 	for c in _row.get_children():
 		c.queue_free()
 	var tile_w := TileFace.LONG * TILE_SCALE
@@ -62,6 +63,15 @@ func set_line(line_ids: Array, _left_end: int, _right_end: int) -> void:
 	_left_zone.position = Vector2(_row.position.x - _left_zone.size.x - 2, (size.y - _left_zone.size.y) * 0.5)
 	_right_zone.position = Vector2(_row.position.x + shown_w + 2, (size.y - _right_zone.size.y) * 0.5)
 
+	# Slide the newly played tile in from outside the board edge.
+	if played_end != "" and count > 0:
+		var children := _row.get_children()
+		var new_tile: TileFace = children[0] if played_end == "L" else children[children.size() - 1]
+		var final_x: float = new_tile.position.x
+		var offscreen_x: float = (size.x / s + tile_w) if played_end == "R" else (-tile_w * 2.0)
+		new_tile.position.x = offscreen_x
+		create_tween().tween_property(new_tile, "position:x", final_x, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
 
 func highlight_ends(left_on: bool, right_on: bool) -> void:
 	_left_zone.visible = left_on
@@ -70,7 +80,7 @@ func highlight_ends(left_on: bool, right_on: bool) -> void:
 
 func _make_zone() -> Panel:
 	var p := Panel.new()
-	p.custom_minimum_size = Vector2(20, TileFace.SHORT * TILE_SCALE)
+	p.custom_minimum_size = Vector2(44, TileFace.SHORT * TILE_SCALE)
 	p.size = p.custom_minimum_size
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(1.0, 0.84, 0.27, 0.5)

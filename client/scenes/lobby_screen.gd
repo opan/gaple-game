@@ -14,6 +14,7 @@ var _phase: String = "LOBBY"
 var _code_label: Label
 var _seats_box: VBoxContainer
 var _start_btn: Button
+var _leave_btn: Button
 var _status_label: Label
 
 
@@ -77,11 +78,11 @@ func _build_ui() -> void:
 	_start_btn.pressed.connect(_on_start)
 	btn_row.add_child(_start_btn)
 
-	var leave_btn := Button.new()
-	leave_btn.text = "Leave"
-	leave_btn.custom_minimum_size = Vector2(100, 44)
-	leave_btn.pressed.connect(_on_leave)
-	btn_row.add_child(leave_btn)
+	_leave_btn = Button.new()
+	_leave_btn.text = "Leave"
+	_leave_btn.custom_minimum_size = Vector2(100, 44)
+	_leave_btn.pressed.connect(_on_leave)
+	btn_row.add_child(_leave_btn)
 
 
 func _on_net_event(msg: Dictionary) -> void:
@@ -90,6 +91,16 @@ func _on_net_event(msg: Dictionary) -> void:
 			_apply_room_state(msg)
 		Protocol.S_GAME_STARTED:
 			game_started.emit()
+		Protocol.S_ERROR:
+			var code: String = msg.get("code", "")
+			match code:
+				Protocol.E_NOT_HOST:
+					_toast("Only the host can do that")
+				_:
+					_toast("Error: %s" % code.replace("_", " ").to_lower())
+			# Re-enable Start so the host can retry after a server rejection.
+			if is_instance_valid(_start_btn):
+				_start_btn.disabled = false
 
 
 func _apply_room_state(msg: Dictionary) -> void:
@@ -188,10 +199,24 @@ func _is_host() -> bool:
 
 func _on_start() -> void:
 	if _net:
+		_start_btn.disabled = true
 		_net.start_game()
 
 
 func _on_leave() -> void:
+	if is_instance_valid(_leave_btn):
+		_leave_btn.disabled = true
 	if _net:
 		_net.leave()
 	left_room.emit()
+
+
+func _toast(text: String) -> void:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_color_override("font_color", Color(1, 0.4, 0.4))
+	lbl.position = Vector2(390, 600)
+	lbl.size = Vector2(500, 30)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(lbl)
+	get_tree().create_timer(3.0).timeout.connect(lbl.queue_free)

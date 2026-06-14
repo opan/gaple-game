@@ -13,6 +13,7 @@ var _backs: Control
 var _glow: Panel
 var _horizontal := false
 var _seat_name := "Bot"
+var _count := 0
 
 
 func _ready() -> void:
@@ -46,6 +47,32 @@ func configure(display_name: String, horizontal: bool) -> void:
 
 
 func set_count(n: int) -> void:
+	# If exactly one tile was played (decrement by 1), fade out the last back
+	# before rebuilding so the removal feels intentional.
+	if n == _count - 1 and _backs.get_child_count() > 0:
+		var last: Node = _backs.get_children()[_backs.get_child_count() - 1]
+		var tw := create_tween()
+		tw.tween_property(last, "modulate:a", 0.0, 0.1)
+		tw.tween_callback(func() -> void: _rebuild(n))
+	else:
+		_rebuild(n)
+
+
+func set_active(active: bool) -> void:
+	if not _glow:
+		return
+	if active:
+		_glow.modulate.a = 0.0
+		_glow.visible = true
+		create_tween().tween_property(_glow, "modulate:a", 1.0, 0.2)
+	else:
+		var tw := create_tween()
+		tw.tween_property(_glow, "modulate:a", 0.0, 0.15)
+		tw.tween_callback(func() -> void: _glow.visible = false)
+
+
+func _rebuild(n: int) -> void:
+	_count = n
 	for c in _backs.get_children():
 		c.queue_free()
 	var bw := TileFace.LONG * BACK_SCALE if _horizontal else TileFace.SHORT * BACK_SCALE
@@ -56,18 +83,11 @@ func set_count(n: int) -> void:
 		tf.setup(0, 0, false, _horizontal)
 		tf.scale = Vector2(BACK_SCALE, BACK_SCALE)
 		if _horizontal:
-			# Lying backs stacked vertically, centered horizontally.
 			tf.position = Vector2((size.x - bw) * 0.5, i * step)
 		else:
-			# Vertical backs in a centered row.
 			tf.position = Vector2((size.x - n * step) * 0.5 + i * step, 0)
 		_backs.add_child(tf)
 	_refresh_label(n)
-
-
-func set_active(active: bool) -> void:
-	if _glow:
-		_glow.visible = active
 
 
 func _refresh_label(n: int) -> void:

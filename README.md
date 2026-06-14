@@ -11,9 +11,9 @@ client and an authoritative headless server.
 **Phases 0–4 are complete** — project bootstrap, the pure rules engine
 (`core/`), the local single-player game (vs 1–3 bots with the full table UI),
 the authoritative headless multiplayer server (`server/`), and the full
-networked client (`client/net/`). Phase 5 (deployment to Fly.io + Cloudflare
-Pages) is in progress. See `PLAN.md` for the roadmap and `docs/GAME_RULES.md`
-for the exact rules.
+networked client (`client/net/`). Phase 5 (deployment) and Phase 6 (polish)
+are in progress. See `PLAN.md` for the roadmap and `docs/GAME_RULES.md` for
+the exact rules.
 
 ## Requirements
 
@@ -21,95 +21,74 @@ for the exact rules.
   - macOS: `brew install --cask godot`, then optionally symlink the CLI:
     `ln -sf /Applications/Godot.app/Contents/MacOS/Godot /opt/homebrew/bin/godot`
   - Verify: `godot --version` → `4.6.3.stable...`
+- **Python 3** (for the local web server)
+- **Docker** (optional, for running the server as a container)
 
-## Running locally
+If `godot` is not on your `PATH`, pass it explicitly: `make test GODOT=/path/to/godot`.
+
+## Quick start
 
 ```sh
-# Client — open the project in the Godot editor and press F5.
-godot --editor          # opens the editor; then F5 to run
-
-# Headless multiplayer server (Ctrl-C to stop)
-godot --headless -- --server --port=9000
-
-# Demo: a script client plays a full round vs a server-side bot
-godot --headless -s tools/ws_client.gd -- --url=ws://127.0.0.1:9000 --name=Demo
+make server        # start headless multiplayer server on :9000
+make client        # open the Godot editor (press F5 to run the client)
+make serve         # export web build and serve it at http://localhost:8060/
 ```
 
-The `--server` flag goes after `--` so Godot passes it through as a user arg
-(consumed by `main.gd`). Without it, the project boots the client.
+## All Makefile targets
 
-### Web build (local)
+| Target | Description |
+|---|---|
+| `make test` | Run the full GUT test suite (headless, exit 1 on failure) |
+| `make test-one FILE=tests/unit/test_rules.gd` | Run a single test script |
+| `make fuzz` | Random-playout fuzz harness (500 rounds by default) |
+| `make server` | Headless multiplayer server on port 9000 |
+| `make client` | Open the Godot editor |
+| `make web` | Export the Web build to `build/web/` |
+| `make serve` | Export + serve `build/web/` at http://localhost:8060/ with COOP/COEP |
+| `make docker-build` | Build the server Docker image |
+| `make docker-run` | Run the server Docker image on port 9000 |
+| `make clean` | Remove `build/web/` |
 
-```sh
-# Requires the Godot 4.6.3 Web export templates (editor → Manage Export
-# Templates, or download the matching .tpz).
-mkdir -p build/web
-godot --headless --export-release "Web" build/web/index.html
-
-# Serve locally with the COOP/COEP headers the engine needs, then open the URL:
-python3 tools/serve_web.py 8060 build/web   # http://localhost:8060/
-```
-
-## Tests
-
-Unit tests use [GUT](https://github.com/bitwes/Gut) (vendored in
-`addons/gut/`). Test directories are configured in `.gutconfig.json`.
+Overridable variables:
 
 ```sh
-# Run the whole suite (exit code 0 = all pass, 1 = any failure)
-godot --headless -s addons/gut/gut_cmdln.gd -gconfig=res://.gutconfig.json
-
-# Run a single test script
-godot --headless -s addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_smoke.gd -gexit
-```
-
-Run the rules-engine fuzz harness (10 000 random legal playouts):
-
-```sh
-godot --headless -s tools/fuzz_playout.gd -- --rounds=10000
+make server PORT=9001
+make serve WEB_PORT=8080
+make fuzz FUZZ_ROUNDS=10000
+make docker-run PORT=9001
 ```
 
 ## Deployment
 
-The live game runs on:
+The server runs as a Docker container (`deploy/Dockerfile`) behind a Cloudflare
+Tunnel on a homelab k8s cluster (k3s). The static web client can be hosted on
+Cloudflare Pages or any static host.
 
-- **Client**: [Cloudflare Pages](https://pages.cloudflare.com/) — static Web export
-- **Server**: [Fly.io](https://fly.io/) — headless Godot container
+### Server (k8s)
 
-### First-time setup
+```sh
+# Apply manifests (fill in your Docker Hub username and domain first)
+kubectl apply -k deployments/
+```
 
-1. **Fly.io**
+See `deployments/` for the Deployment, Service, and Ingress manifests and
+`deploy/docker-compose.yml` for a simpler single-host alternative.
 
-   ```sh
-   # Install flyctl, then:
-   fly auth login
-   fly apps create gaple-server          # must match app name in deploy/fly.toml
-   fly deploy --config deploy/fly.toml
-   ```
+### GitHub Secrets (required for CI image push)
 
-2. **Cloudflare Pages**
+| Secret | Description |
+|---|---|
+| `DOCKER_USERNAME` | Docker Hub username |
+| `DOCKER_PASSWORD` | Docker Hub password or access token |
 
-   Create a Pages project named `gaple-game` in the Cloudflare dashboard, then
-   deploy the built `build/web/` directory (including the `_headers` file the CI
-   copies from `deploy/pages_headers`).
+On every push to `main`, CI runs tests then builds and pushes
+`$DOCKER_USERNAME/gaple-server:latest` to Docker Hub.
 
-3. **GitHub Secrets** (required for CI auto-deploy on merge to `main`):
+### Client (Cloudflare Pages)
 
-   | Secret | Where to get it |
-   |---|---|
-   | `FLY_API_TOKEN` | `fly tokens create deploy` |
-   | `CLOUDFLARE_API_TOKEN` | Cloudflare dashboard → API Tokens → create with "Cloudflare Pages: Edit" |
-   | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare dashboard → right sidebar |
-
-### CI / CD
-
-On every push to `main` the GitHub Actions pipeline (`ci.yml`) runs in order:
-
-1. **tests** — full GUT suite (headless, exit-1 on any failure)
-2. **export** — Web export → `build/web/` with `_headers` injected
-3. **deploy** — client to Cloudflare Pages; server image to Fly.io
-
-PRs run only the `tests` and `export` jobs; deploy is skipped.
+Deploy `build/web/` (produced by `make web`) to any static host. The
+`deploy/pages_headers` file must be served as `_headers` at the root so
+browsers allow `SharedArrayBuffer` (required for Godot threads).
 
 ## Documentation
 

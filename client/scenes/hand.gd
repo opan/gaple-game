@@ -15,7 +15,8 @@ var _tiles: Array = []   # TileFace nodes, left→right
 
 ## tile_ids: the hand in display order. playable: a Set-like Dictionary
 ## {tile_id: true} of tiles that have at least one legal move.
-func set_hand(tile_ids: Array, playable: Dictionary) -> void:
+## deal: when true, tiles deal in with a stagger animation (game start / resync).
+func set_hand(tile_ids: Array, playable: Dictionary, deal: bool = false) -> void:
 	for t in _tiles:
 		t.queue_free()
 	_tiles.clear()
@@ -31,6 +32,16 @@ func set_hand(tile_ids: Array, playable: Dictionary) -> void:
 		add_child(tf)
 		_tiles.append(tf)
 	_layout()
+	if deal:
+		for i in range(_tiles.size()):
+			var tf: TileFace = _tiles[i]
+			tf.modulate.a = 0.0
+			tf.position.y += 30.0
+			var tw := create_tween()
+			tw.tween_interval(i * 0.06)
+			tw.tween_property(tf, "modulate:a", 1.0, 0.15)
+			var base_y: float = tf.get_meta("base_y", tf.position.y - 30.0)
+			tw.parallel().tween_property(tf, "position:y", base_y, 0.15)
 
 
 func _on_tile_pressed(tile_id: int) -> void:
