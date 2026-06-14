@@ -38,19 +38,18 @@ func _find(t: String) -> Dictionary:
 
 
 ## Drive a full game: every time control returns to the human, play a legal
-## move (or pass). With zero bot delay everything runs synchronously, so when no
-## round_over has arrived it must be the human's turn.
+## move. The driver auto-passes stuck seats, so when _drive() stops and there
+## is no round_over it is always the human's turn with a legal move available.
 func _play_to_completion(num_players: int, seed_value: int) -> void:
 	_driver.start(num_players, 0, seed_value)
 	var guard := 0
 	while _count(Protocol.S_ROUND_OVER) == 0 and guard < 200:
 		guard += 1
-		var moves := _driver.legal_moves_for_human()
+		var moves := _driver._game.legal_moves(_driver._human_seat)
 		if moves.is_empty():
-			_driver.submit_pass()
-		else:
-			var m: Dictionary = moves[0]
-			_driver.submit_play(m["tile_id"], m["end"])
+			break  # should not happen: driver only yields when human has a move
+		var m: Dictionary = moves[0]
+		_driver.submit_play(m["tile_id"], m["end"])
 	assert_lt(guard, 200, "game finished without spinning")
 
 

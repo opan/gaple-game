@@ -1,9 +1,9 @@
 class_name GameTable
 extends Control
 ## Assembles the whiteboard table and drives the human's interaction against a
-## LocalGameDriver (PHASE_2_PLAN.md §7/§8). The client keeps a local view of the
-## public board, updated from driver events — never by reading the engine — so
-## the same code works against the network path in Phase 4.
+## LocalGameDriver or NetworkConnection (PHASE_4_PLAN.md §5). The client keeps a
+## local view of the public board, updated from driver events — never by reading
+## the engine — so the same code works against both sources.
 
 signal returned_to_menu
 
@@ -22,12 +22,16 @@ var bot_delay := Vector2(0.8, 2.0)
 
 var _client: Node                    # a GameClient: LocalGameDriver or NetworkConnection
 var _my_seat: int = -1               # learned from the `hand` message
+var _host_seat: int = -1             # learned from `room_state`; -1 in local play
 var _board: BoardLine
 var _hand: Hand
 var _seats: Dictionary = {}          # logical seat -> OpponentSeat
 var _banner: Label
 var _status: Label
 var _overlay: Control
+var _end_game_btn: Button            # host-only; null in local play
+var _countdown_label: Label          # turn deadline ticker; null when no deadline
+var _deadline_unix_ms: int = -1      # -1 = no countdown (local play)
 
 # Local view of public state, rebuilt from events.
 var _num_players: int = 0
@@ -41,6 +45,7 @@ var _opening_tile_id: int = -1
 var _ui: int = Ui.WAITING
 var _moves: Array = []
 var _picked_tile: int = -1
+var _seat_names: Dictionary = {}   # seat -> name String, populated from room_state
 
 
 func _ready() -> void:
@@ -67,6 +72,20 @@ func _ready() -> void:
 	_banner = _make_label(Rect2(340, 360, 600, 40), Color(1.0, 0.84, 0.27))
 	_banner.add_theme_font_size_override("font_size", 22)
 	_banner.visible = false
+
+	# Turn countdown (top-right corner).
+	_countdown_label = _make_label(Rect2(1100, 8, 160, 30), Color(1.0, 0.6, 0.3))
+	_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_countdown_label.visible = false
+
+	# Host-only End game button (top-left corner); hidden by default.
+	_end_game_btn = Button.new()
+	_end_game_btn.text = "End game"
+	_end_game_btn.position = Vector2(16, 8)
+	_end_game_btn.custom_minimum_size = Vector2(110, 32)
+	_end_game_btn.visible = false
+	_end_game_btn.pressed.connect(_on_end_game_pressed)
+	add_child(_end_game_btn)
 
 
 ## Practice entry point: create a local driver, bind, and deal the first round.
@@ -103,15 +122,36 @@ func is_round_over() -> bool:
 	return is_instance_valid(_overlay)
 
 
+func _process(_delta: float) -> void:
+	if _deadline_unix_ms <= 0 or not is_instance_valid(_countdown_label):
+		return
+	var remaining := (_deadline_unix_ms - int(Time.get_unix_time_from_system() * 1000)) / 1000.0
+	if remaining <= 0.0:
+		_countdown_label.text = "0s"
+	else:
+		_countdown_label.text = "%ds" % int(ceil(remaining))
+
+
 # --- event handling ------------------------------------------------------
 
 func _on_event(msg: Dictionary) -> void:
-	match msg["t"]:
+	match msg.get("t", ""):
+		Protocol.S_ROOM_STATE:
+			_host_seat = int(msg.get("host_seat", -1))
+			for occ in msg.get("seats", []):
+				var s: int = int(occ.get("seat", -1))
+				if s >= 0 and occ.get("name", "") != "":
+					_seat_names[s] = occ["name"]
+			_update_host_controls()
 		Protocol.S_GAME_STARTED:
 			_on_game_started(msg)
 		Protocol.S_HAND:
+			var prev_seat := _my_seat
 			_my_seat = int(msg.get("seat", _my_seat))
 			_human_hand = _to_ints(msg["tile_ids"])
+			_update_host_controls()
+			if _my_seat != prev_seat and _num_players > 0:
+				_build_seats(_num_players)   # re-layout when we learn our true seat
 		Protocol.S_PUBLIC_STATE:
 			_on_public_state(msg["state"])
 		Protocol.S_TILE_PLAYED:
@@ -123,9 +163,13 @@ func _on_event(msg: Dictionary) -> void:
 			else:
 				_flash_status("Seat %d passed" % int(msg["seat"]))
 		Protocol.S_TURN_STARTED:
-			_on_turn_started(msg["seat"])
+			_on_turn_started(msg)
 		Protocol.S_ROUND_OVER:
 			_on_round_over(msg)
+		Protocol.S_PLAYER_REPLACED:
+			_flash_status("Seat %d left — bot took over" % int(msg.get("seat", -1)))
+		Protocol.S_PLAYER_RECLAIMED:
+			_flash_status("Seat %d reconnected" % int(msg.get("seat", -1)))
 		Protocol.S_ERROR:
 			_flash_status("Error: %s" % msg.get("message", ""))
 
@@ -167,7 +211,15 @@ func _on_tile_played(msg: Dictionary) -> void:
 		_seats[seat].set_count(msg["remaining_count"])
 
 
-func _on_turn_started(seat: int) -> void:
+func _on_turn_started(msg: Dictionary) -> void:
+	var seat: int = int(msg["seat"])
+	_deadline_unix_ms = int(msg.get("deadline_unix_ms", -1))
+	if _deadline_unix_ms > 0:
+		_countdown_label.visible = true
+	else:
+		_countdown_label.visible = false
+		_countdown_label.text = ""
+
 	for s: int in _seats:
 		_seats[s].set_active(s == seat)
 
@@ -202,6 +254,11 @@ func _on_turn_started(seat: int) -> void:
 
 func _on_round_over(msg: Dictionary) -> void:
 	_ui = Ui.WAITING
+	_deadline_unix_ms = -1
+	if is_instance_valid(_countdown_label):
+		_countdown_label.visible = false
+	if is_instance_valid(_end_game_btn):
+		_end_game_btn.visible = false
 	_hide_banner()
 	for s: int in _seats:
 		_seats[s].set_active(false)
@@ -267,17 +324,20 @@ func _build_seats(n: int) -> void:
 	for s in _seats:
 		_seats[s].queue_free()
 	_seats.clear()
+	var my: int = max(_my_seat, 0)   # -1 before hand arrives → default 0
 	for seat in range(n):
-		if seat == 0:
+		if seat == my:
 			continue   # the local player (bottom) isn't an OpponentSeat
-		var screen := _screen_for((seat) % n, n)
+		var rel: int = (seat - my + n) % n
+		var screen := _screen_for(rel, n)
 		var horizontal := screen == "LEFT" or screen == "RIGHT"
 		var os := OpponentSeat.new()
 		var rect: Rect2 = SEAT_RECT[screen]
 		os.position = rect.position
 		os.size = rect.size
 		add_child(os)
-		os.configure("Bot %d" % seat, horizontal)
+		var display_name: String = _seat_names.get(seat, "Seat %d" % seat)
+		os.configure(display_name, horizontal)
 		os.set_count(GameState.HAND_SIZE)
 		_seats[seat] = os
 
@@ -353,10 +413,18 @@ func _show_round_over(msg: Dictionary) -> void:
 		row.text = "%s — this round +%d,  total %d" % [who, this_round, scoreboard[seat]]
 		box.add_child(row)
 
-	var again := Button.new()
-	again.text = "Play again"
-	again.pressed.connect(_on_play_again)
-	box.add_child(again)
+	# Host sees "Play again"; non-host sees a waiting label.
+	var is_host := _host_seat < 0 or _my_seat == _host_seat  # -1 = local play
+	if is_host:
+		var again := Button.new()
+		again.text = "Play again"
+		again.pressed.connect(_on_play_again)
+		box.add_child(again)
+	else:
+		var waiting := Label.new()
+		waiting.text = "Waiting for host to start next round…"
+		waiting.add_theme_color_override("font_color", Color(0.7, 0.75, 0.8))
+		box.add_child(waiting)
 
 	var menu := Button.new()
 	menu.text = "Back to menu"
@@ -364,6 +432,28 @@ func _show_round_over(msg: Dictionary) -> void:
 	box.add_child(menu)
 
 	add_child(_overlay)
+
+
+func _update_host_controls() -> void:
+	if not is_instance_valid(_end_game_btn):
+		return
+	# Show End game button only when we know our seat and we are the host.
+	var is_host := _host_seat >= 0 and _my_seat == _host_seat
+	_end_game_btn.visible = is_host
+
+
+func _on_end_game_pressed() -> void:
+	# Confirm dialog → send end_game.
+	var dialog := ConfirmationDialog.new()
+	dialog.dialog_text = "End the current round? No scores will be recorded."
+	dialog.title = "End game"
+	dialog.confirmed.connect(func():
+		if _client:
+			_client.end_game() if _client.has_method("end_game") else null
+		dialog.queue_free())
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered()
 
 
 func _on_play_again() -> void:

@@ -6,7 +6,7 @@ extends Node
 ## connection without changing the UI.
 ##
 ## Bot pacing is the driver's job; human turn timing is the UI's. On a human
-## turn the driver simply stops and waits for submit_play()/submit_pass().
+## turn the driver stops and waits for submit_play().
 
 signal event_received(msg: Dictionary)
 
@@ -64,18 +64,6 @@ func leave() -> void:
 	pass
 
 
-func submit_pass() -> void:
-	_apply({"type": "pass", "seat": _human_seat})
-	_drive()
-
-
-## Legal moves for the local player — the UI uses this to highlight tiles/ends.
-func legal_moves_for_human() -> Array:
-	return _game.legal_moves(_human_seat)
-
-
-func human_seat() -> int:
-	return _human_seat
 
 
 # --- internals -----------------------------------------------------------

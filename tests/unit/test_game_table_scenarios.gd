@@ -33,12 +33,11 @@ func test_blocked_game_is_reachable_and_names_a_winner() -> void:
 		var guard := 0
 		while ro.is_empty() and guard < 200:
 			guard += 1
-			var moves := driver.legal_moves_for_human()
+			var moves := driver._game.legal_moves(driver._human_seat)
 			if moves.is_empty():
-				driver.submit_pass()
-			else:
-				var m: Dictionary = moves[rng.randi_range(0, moves.size() - 1)]
-				driver.submit_play(m["tile_id"], m["end"])
+				break  # should not happen: driver only yields when human has moves
+			var m: Dictionary = moves[rng.randi_range(0, moves.size() - 1)]
+			driver.submit_play(m["tile_id"], m["end"])
 		if ro.get("reason", "") == "BLOCKED":
 			found_blocked = true
 			var pips: Array = ro["pip_counts"]
@@ -72,6 +71,7 @@ func test_forced_opener_enables_only_the_forced_tile() -> void:
 	assert_gte(seed_value, 0, "found a seed where the human opens")
 
 	var t := _table(2, seed_value)
-	var moves: Array = t.get_driver().legal_moves_for_human()
+	# After start_game the table has pre-computed _moves for the human opener.
+	var moves: Array = t._moves
 	assert_eq(moves.size(), 1, "opener may only play the forced tile")
 	assert_eq(moves[0]["tile_id"], forced, "and it is the forced opening tile")
