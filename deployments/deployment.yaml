@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gaple-server
+  labels:
+    app: gaple-server
+spec:
+  # Rooms are in-memory; multiple replicas would shard state across pods.
+  # Keep at 1. Restarts kill in-progress games (acceptable in v1, see ADR-002).
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gaple-server
+  template:
+    metadata:
+      labels:
+        app: gaple-server
+    spec:
+      containers:
+      - name: gaple-server
+        image: YOUR_DOCKERHUB_USERNAME/gaple-server:latest  # update with your username
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9000
+          name: ws
+          protocol: TCP
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+        # Godot's WebSocket server doesn't respond to HTTP GET, so use TCP probes.
+        livenessProbe:
+          tcpSocket:
+            port: 9000
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 9000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3

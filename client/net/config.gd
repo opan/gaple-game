@@ -3,7 +3,7 @@ extends RefCounted
 ## Server URL selection per build type (ADR-005, PHASE_4_PLAN.md §6).
 ## Debug → localhost; Release → production host; overridable via ?server= param.
 
-const RELEASE_URL := "wss://gaple-server.fly.dev"
+const RELEASE_URL := "wss://gaple.yourdomain.com"   # replace with your Cloudflare Tunnel hostname
 const DEBUG_URL   := "ws://localhost:9000"
 
 

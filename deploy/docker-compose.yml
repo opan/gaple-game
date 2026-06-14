@@ -1,0 +1,8 @@
+services:
+  gaple-server:
+    image: opan/gaple-server:latest   # update to your Docker Hub username
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    # If you're routing traffic through Cloudflare Tunnel, remove the ports
+    # mapping and let cloudflared reach the container via the internal network.

@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gaple-server
+  annotations:
+    # WebSocket connections are long-lived; raise the proxy timeouts so the
+    # ingress doesn't drop an idle game in the middle of a 30-second turn timer.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # If you route traffic via Cloudflare Tunnel directly to the Service (no
+    # Ingress in the path), this file is not needed — point cloudflared at
+    # http://gaple-server.NAMESPACE.svc.cluster.local:9000 instead.
+spec:
+  ingressClassName: nginx  # k3s default is traefik; update to match your cluster
+  rules:
+  - host: gaple.yourdomain.com  # update with your Cloudflare Tunnel hostname
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gaple-server
+            port:
+              number: 9000
