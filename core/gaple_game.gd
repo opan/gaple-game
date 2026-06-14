@@ -89,34 +89,12 @@ static func _opener_better(a: Tile, b: Tile) -> bool:
 ## Legal moves for `seat` right now. Each move: { "tile_id": int, "end": "L"|"R" }.
 ## Empty ⇒ the seat has no playable tile and must pass (GAME_RULES §5.6).
 func legal_moves(seat: int) -> Array:
-	var moves: Array = []
 	if not state.is_active() or seat != state.current_seat:
-		return moves
-
-	var hand: Array = state.hands[seat]
-
-	if state.line.is_empty():
-		# Opening move: the first tile goes down on the (conventional) left end.
-		if state.forced_opening_tile >= 0:
-			for t: Tile in hand:
-				if t.to_id() == state.forced_opening_tile:
-					moves.append({"tile_id": t.to_id(), "end": "L"})
-		else:
-			for t: Tile in hand:
-				moves.append({"tile_id": t.to_id(), "end": "L"})
-		return moves
-
-	var ends_equal := state.left_end == state.right_end
-	for t: Tile in hand:
-		var on_left := t.matches(state.left_end)
-		var on_right := t.matches(state.right_end)
-		if on_left:
-			moves.append({"tile_id": t.to_id(), "end": "L"})
-		# When both open ends show the same pip, L and R are equivalent board
-		# positions — don't list the redundant duplicate.
-		if on_right and not ends_equal:
-			moves.append({"tile_id": t.to_id(), "end": "R"})
-	return moves
+		return []
+	# Delegate to the pure helper shared with the client (PHASE_4_PLAN.md §4).
+	return Legal.moves_for(
+		state.left_end, state.right_end, state.line.is_empty(),
+		state.forced_opening_tile, state.hand_dict(seat))
 
 
 ## Apply one intent, mutating state. Returns

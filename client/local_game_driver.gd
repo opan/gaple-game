@@ -59,6 +59,11 @@ func submit_play(tile_id: int, end_side: String) -> void:
 	_drive()
 
 
+## GameClient interface parity with NetworkConnection; nothing to do locally.
+func leave() -> void:
+	pass
+
+
 func submit_pass() -> void:
 	_apply({"type": "pass", "seat": _human_seat})
 	_drive()
@@ -85,20 +90,23 @@ func _announce_round() -> void:
 	_emit(a["turn_started"])
 
 
-## Play out bot turns until it is the human's turn or the round ends.
+## Play out every seat the driver can act for (bots, and the human when stuck —
+## auto-pass, matching the server Room) until the human has a real choice or the
+## round ends. The client therefore never sends a pass.
 func _drive() -> void:
 	if _driving:
 		return
 	_driving = true
 	while _game.state.is_active():
 		var seat := _game.state.current_seat
-		if seat == _human_seat:
+		var legal := _game.legal_moves(seat)
+		if seat == _human_seat and not legal.is_empty():
 			break
-		if bot_delay.y > 0.0:
+		if seat != _human_seat and bot_delay.y > 0.0:
 			await get_tree().create_timer(_rng.randf_range(bot_delay.x, bot_delay.y)).timeout
 			if not _game.state.is_active():
 				break
-		var legal := _game.legal_moves(seat)
+			legal = _game.legal_moves(seat)
 		if legal.is_empty():
 			_apply({"type": "pass", "seat": seat})
 		else:

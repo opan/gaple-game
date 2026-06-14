@@ -320,6 +320,16 @@ Acceptance criteria:
 
 ## 7. Phase 4 — Networked client (≈ 3–4 days)
 
+> **Detailed, executable spec: `docs/PHASE_4_PLAN.md`.** It supersedes this
+> section where they differ and records the reviewed refinements: (R1) the client
+> computes its own legal-move highlights via a new pure **`core/legal.gd`** (server
+> stays authoritative); (R2) the local driver is aligned to **auto-pass** stuck
+> seats like the server, so the client never sends `pass`; (R3) the client learns
+> its seat from the `hand` message; (R4) `game_table` takes an injected
+> **`GameClient`** (local driver *or* network connection) — one UI, two sources;
+> (R5) a raw-`WebSocketPeer` **`NetworkConnection`** autoload with token reconnect;
+> (R6) reconnect reuses the server's resync messages.
+
 1. `connection.gd` autoload: connect/handshake (`hello`→`welcome`), send
    helpers, signal `event_received(msg)`, auto-reconnect with stored
    `session_token` (3 retries, exponential backoff), connection-lost overlay.

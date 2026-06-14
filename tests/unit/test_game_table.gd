@@ -6,10 +6,9 @@ extends GutTest
 
 func _new_table(num_players: int, seed_value: int) -> GameTable:
 	var table := GameTable.new()
-	table.human_pass_delay = 0.0
+	table.bot_delay = Vector2.ZERO        # synchronous: set before the driver starts
 	add_child_autofree(table)
 	table.start_game(num_players, seed_value)
-	table.get_driver().bot_delay = Vector2.ZERO
 	return table
 
 
@@ -30,10 +29,9 @@ func test_full_two_player_game_reaches_round_over() -> void:
 
 func test_full_four_player_game_builds_three_opponent_seats() -> void:
 	var table := GameTable.new()
-	table.human_pass_delay = 0.0
+	table.bot_delay = Vector2.ZERO
 	add_child_autofree(table)
 	table.start_game(4, 99)
-	table.get_driver().bot_delay = Vector2.ZERO
 	# One OpponentSeat per non-local seat.
 	var seats := 0
 	for c in table.get_children():

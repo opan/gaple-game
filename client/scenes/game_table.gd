@@ -17,14 +17,11 @@ const SEAT_RECT := {
 const BOARD_RECT := Rect2(330, 250, 620, 200)
 const HAND_RECT := Rect2(330, 470, 620, 240)
 
-## How long the "No playable tile — passing…" banner shows before auto-passing.
-## Tests set this to 0 to run fast.
-var human_pass_delay := 1.5
-
-## Bot "thinking" delay, applied to the driver. Tests/screenshots set ZERO.
+## Bot "thinking" delay, applied to the local driver. Tests/screenshots set ZERO.
 var bot_delay := Vector2(0.8, 2.0)
 
-var _driver: LocalGameDriver
+var _client: Node                    # a GameClient: LocalGameDriver or NetworkConnection
+var _my_seat: int = -1               # learned from the `hand` message
 var _board: BoardLine
 var _hand: Hand
 var _seats: Dictionary = {}          # logical seat -> OpponentSeat
@@ -72,17 +69,24 @@ func _ready() -> void:
 	_banner.visible = false
 
 
-## Entry point used by the menu. Adds a driver and deals the first round.
+## Practice entry point: create a local driver, bind, and deal the first round.
 func start_game(num_players: int, game_seed: int = -1) -> void:
-	_driver = LocalGameDriver.new()
-	_driver.bot_delay = bot_delay
-	add_child(_driver)
-	_driver.event_received.connect(_on_event)
-	_driver.start(num_players, 0, game_seed)
+	var driver := LocalGameDriver.new()
+	driver.bot_delay = bot_delay
+	add_child(driver)
+	bind(driver)
+	driver.start(num_players, 0, game_seed)
 
 
-func get_driver() -> LocalGameDriver:
-	return _driver
+## Network entry point: bind to an already-connected client (the menu/lobby owns
+## starting it). The table is source-agnostic — it only consumes wire events.
+func bind(client: Node) -> void:
+	_client = client
+	_client.event_received.connect(_on_event)
+
+
+func get_driver() -> Node:
+	return _client
 
 
 ## Play the human's first legal move if it's their turn. Powers an AFK/auto
@@ -106,13 +110,18 @@ func _on_event(msg: Dictionary) -> void:
 		Protocol.S_GAME_STARTED:
 			_on_game_started(msg)
 		Protocol.S_HAND:
-			_human_hand = msg["tile_ids"].duplicate()
+			_my_seat = int(msg.get("seat", _my_seat))
+			_human_hand = _to_ints(msg["tile_ids"])
 		Protocol.S_PUBLIC_STATE:
 			_on_public_state(msg["state"])
 		Protocol.S_TILE_PLAYED:
 			_on_tile_played(msg)
 		Protocol.S_PLAYER_PASSED:
-			_flash_status("Seat %d passed" % msg["seat"])
+			# The server/driver auto-passes; we react rather than send a pass.
+			if int(msg["seat"]) == _my_seat:
+				_flash_status("No playable tile — you passed")
+			else:
+				_flash_status("Seat %d passed" % int(msg["seat"]))
 		Protocol.S_TURN_STARTED:
 			_on_turn_started(msg["seat"])
 		Protocol.S_ROUND_OVER:
@@ -152,7 +161,7 @@ func _on_tile_played(msg: Dictionary) -> void:
 	_right_end = msg["new_right_end"]
 	_board.set_line(_line, _left_end, _right_end)
 
-	if seat == _driver.human_seat():
+	if seat == _my_seat:
 		_human_hand.erase(tid)
 	elif _seats.has(seat):
 		_seats[seat].set_count(msg["remaining_count"])
@@ -162,20 +171,19 @@ func _on_turn_started(seat: int) -> void:
 	for s: int in _seats:
 		_seats[s].set_active(s == seat)
 
-	if seat != _driver.human_seat():
+	if seat != _my_seat:
 		_ui = Ui.WAITING
 		_status.text = "Seat %d is thinking…" % seat
 		_hand.set_hand(_human_hand, {})   # not our turn: all disabled
 		return
 
-	_moves = _driver.legal_moves_for_human()
+	# Compute our own highlights from the local view (server stays authoritative).
+	_moves = _legal_moves_for_me()
 	if _moves.is_empty():
+		# A forced pass is incoming from the driver/server; just wait for it.
+		_ui = Ui.WAITING
 		_status.text = ""
-		_show_banner("No playable tile — passing…")
-		await get_tree().create_timer(human_pass_delay).timeout
-		_hide_banner()
-		if is_instance_valid(_driver):
-			_driver.submit_pass()
+		_hand.set_hand(_human_hand, {})
 		return
 
 	_ui = Ui.IDLE
@@ -229,7 +237,7 @@ func _submit(tile_id: int, end_side: String) -> void:
 	_ui = Ui.WAITING
 	_board.highlight_ends(false, false)
 	_hide_banner()
-	_driver.submit_play(tile_id, end_side)
+	_client.submit_play(tile_id, end_side)
 
 
 func _ends_for(tile_id: int) -> Array:
@@ -238,6 +246,19 @@ func _ends_for(tile_id: int) -> Array:
 		if m["tile_id"] == tile_id:
 			ends.append(m["end"])
 	return ends
+
+
+## Our legal moves, computed locally from the public view + our hand (the server
+## stays authoritative). Source-agnostic — works for local and online play.
+func _legal_moves_for_me() -> Array:
+	return Legal.moves_for(_left_end, _right_end, _line.is_empty(), _opening_tile_id, _human_hand)
+
+
+func _to_ints(arr: Array) -> Array:
+	var out: Array = []
+	for x in arr:
+		out.append(int(x))
+	return out
 
 
 # --- layout / chrome -----------------------------------------------------
@@ -317,7 +338,7 @@ func _show_round_over(msg: Dictionary) -> void:
 	title.add_theme_font_size_override("font_size", 28)
 	if reason == "ABORTED":
 		title.text = "Round ended"
-	elif winner == _driver.human_seat():
+	elif winner == _my_seat:
 		title.text = "You win! (%s)" % reason.to_lower()
 	else:
 		title.text = "Seat %d wins (%s)" % [winner, reason.to_lower()]
@@ -327,7 +348,7 @@ func _show_round_over(msg: Dictionary) -> void:
 	var scores: Array = msg.get("scores", [])
 	for seat in range(scoreboard.size()):
 		var row := Label.new()
-		var who := "You" if seat == _driver.human_seat() else "Bot %d" % seat
+		var who := "You" if seat == _my_seat else "Seat %d" % seat
 		var this_round: int = scores[seat] if seat < scores.size() else 0
 		row.text = "%s — this round +%d,  total %d" % [who, this_round, scoreboard[seat]]
 		box.add_child(row)
@@ -347,7 +368,7 @@ func _show_round_over(msg: Dictionary) -> void:
 
 func _on_play_again() -> void:
 	_clear_overlay()
-	_driver.play_again()
+	_client.play_again()
 
 
 func _clear_overlay() -> void:

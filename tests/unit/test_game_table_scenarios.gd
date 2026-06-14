@@ -7,7 +7,6 @@ extends GutTest
 func _table(num_players: int, seed_value: int) -> GameTable:
 	var t := GameTable.new()
 	t.bot_delay = Vector2.ZERO
-	t.human_pass_delay = 0.0
 	add_child_autofree(t)
 	t.start_game(num_players, seed_value)
 	return t
@@ -73,6 +72,6 @@ func test_forced_opener_enables_only_the_forced_tile() -> void:
 	assert_gte(seed_value, 0, "found a seed where the human opens")
 
 	var t := _table(2, seed_value)
-	var moves := t.get_driver().legal_moves_for_human()
+	var moves: Array = t.get_driver().legal_moves_for_human()
 	assert_eq(moves.size(), 1, "opener may only play the forced tile")
 	assert_eq(moves[0]["tile_id"], forced, "and it is the forced opening tile")

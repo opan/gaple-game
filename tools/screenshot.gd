@@ -27,7 +27,6 @@ func _process(_delta: float) -> bool:
 		get_root().set_content_scale_size(Vector2i(1280, 720))
 		_table = GameTable.new()
 		_table.bot_delay = Vector2.ZERO        # bots play instantly (board fills)
-		_table.human_pass_delay = 999.0        # if forced pass, just hold the banner
 		get_root().add_child(_table)
 		_table.start_game(_players, _seed)
 	elif _frames >= 6:
