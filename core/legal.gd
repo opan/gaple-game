@@ -1,5 +1,7 @@
 class_name Legal
 extends RefCounted
+
+const Tile = preload("res://core/tile.gd")
 ## Legal-move computation from the open board + a hand of tile ids, with no full
 ## GameState (PHASE_4_PLAN.md §4). The engine and the networked client both call
 ## this, so their notion of "playable" provably matches. The server stays

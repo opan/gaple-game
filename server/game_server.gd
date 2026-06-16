@@ -1,5 +1,9 @@
 class_name GameServer
 extends Node
+
+const Protocol  = preload("res://core/protocol.gd")
+const Room      = preload("res://server/room.gd")
+const Transport = preload("res://server/transport.gd")
 ## Connection + session + room dispatch (PHASE_3_PLAN.md §3). Transport-injected,
 ## so tests drive it with fake peer ids and no sockets; server_main feeds it the
 ## real WebSocket events. Room registry/codes live here for v1 (the master plan's

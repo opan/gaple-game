@@ -6,6 +6,11 @@ extends Node
 ## the client UI. Phase 0 only prints placeholders for each branch — the real
 ## server (Phase 3) and main menu (Phase 4) replace these.
 
+# Explicit preloads so class_name globals resolve in Linux headless mode (no
+# editor pre-scan) as well as the macOS editor environment.
+const ServerMain = preload("res://server/server_main.gd")
+const AppRoot    = preload("res://client/scenes/app_root.gd")
+
 const DEFAULT_PORT := 9000
 
 

@@ -1,5 +1,7 @@
 class_name GameState
 extends RefCounted
+
+const Tile = preload("res://core/tile.gd")
 ## Full state of one Gaple round. Pure value object (ADR-003): no engine deps.
 ##
 ## Seats are contiguous logical indices 0..num_players-1; all of them are
@@ -58,7 +60,7 @@ func to_dict() -> Dictionary:
 
 
 static func from_dict(d: Dictionary) -> GameState:
-	var s := GameState.new()
+	var s = load("res://core/game_state.gd").new()
 	s.rng_seed = int(d["rng_seed"])
 	s.num_players = int(d["num_players"])
 	s.hands = []

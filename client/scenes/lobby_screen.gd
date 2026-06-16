@@ -1,5 +1,8 @@
 class_name LobbyScreen
 extends Control
+
+const NetworkConnection = preload("res://client/net/connection.gd")
+const Protocol          = preload("res://core/protocol.gd")
 ## Lobby: shows the room code, seat list, host controls, and waits for
 ## game_started. (PHASE_4_PLAN.md §7, Step 4)
 

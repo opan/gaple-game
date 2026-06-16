@@ -61,7 +61,7 @@ static func from_id(id: int) -> Tile:
 	while remaining >= (7 - l):
 		remaining -= (7 - l)
 		l += 1
-	return Tile.new(l, l + remaining)
+	return load("res://core/tile.gd").new(l, l + remaining)
 
 
 func _to_string() -> String:

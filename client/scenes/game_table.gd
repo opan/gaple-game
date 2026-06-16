@@ -1,5 +1,14 @@
 class_name GameTable
 extends Control
+
+const BoardLine        = preload("res://client/scenes/board_line.gd")
+const Hand             = preload("res://client/scenes/hand.gd")
+const LocalGameDriver  = preload("res://client/local_game_driver.gd")
+const Protocol         = preload("res://core/protocol.gd")
+const Tile             = preload("res://core/tile.gd")
+const Legal            = preload("res://core/legal.gd")
+const OpponentSeat     = preload("res://client/scenes/opponent_seat.gd")
+const GameState        = preload("res://core/game_state.gd")
 ## Assembles the whiteboard table and drives the human's interaction against a
 ## LocalGameDriver or NetworkConnection (PHASE_4_PLAN.md §5). The client keeps a
 ## local view of the public board, updated from driver events — never by reading

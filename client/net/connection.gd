@@ -7,6 +7,11 @@ extends Node
 ##
 ## Also implements the GameClient surface so game_table can bind directly.
 
+# Explicit preloads so class_name globals resolve in Linux headless mode (no
+# editor pre-scan) as well as the macOS editor environment.
+const Protocol = preload("res://core/protocol.gd")
+const NetConfig = preload("res://client/net/config.gd")
+
 signal event_received(msg: Dictionary)
 signal connection_changed(state: String)   # "connecting" | "open" | "reconnecting" | "closed"
 

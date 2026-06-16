@@ -1,5 +1,8 @@
 class_name Hand
 extends Control
+
+const Tile     = preload("res://core/tile.gd")
+const TileFace = preload("res://client/scenes/tile_face.gd")
 ## The local player's fanned hand (PHASE_2_PLAN.md §6/§7). Renders 1–5 tiles on
 ## a shallow arc; playable tiles are enabled, the rest desaturated. Emits
 ## tile_clicked when an enabled tile is pressed.

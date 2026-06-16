@@ -1,5 +1,5 @@
 class_name WsTransport
-extends Transport
+extends "res://server/transport.gd"
 ## Real transport: sends wire messages as JSON text frames over raw per-client
 ## WebSocketPeer connections (ADR-002). Raw WebSocket (not WebSocketMultiplayer-
 ## Peer) so browsers / wscat / any standard client get clean JSON, with no

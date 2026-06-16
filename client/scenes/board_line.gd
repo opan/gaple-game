@@ -1,5 +1,8 @@
 class_name BoardLine
 extends Control
+
+const Tile     = preload("res://core/tile.gd")
+const TileFace = preload("res://client/scenes/tile_face.gd")
 ## The played-tile chain with two highlightable open ends (PHASE_2_PLAN.md §7).
 ## Tiles lie horizontally in a centered row that scales down if the chain gets
 ## wide. End "drop zones" glow to show where the picked tile can go and are

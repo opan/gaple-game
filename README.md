@@ -35,8 +35,9 @@ the exact rules.
       editor (Editor → Manage Export Templates → Download) or drop the
       `4.6.3.stable` template pack into `~/.local/share/godot/export_templates/`.
     - The headless server and the full test suite run inside WSL with no extra
-      setup. To open the **editor** GUI (`make client`), you need WSLg — included
-      in Windows 11 and recent Windows 10; run `wslg --version` to confirm, then
+      setup — they need no display. To open the **editor** GUI (`make client`),
+      you need WSLg — included in Windows 11 and recent Windows 10. Confirm it's
+      active with `echo $DISPLAY` (should print `:0`) or `ls /mnt/wslg`; if so,
       `godot --editor` works. Otherwise run the editor from a native Windows
       Godot install instead.
   - Verify: `godot --version` → `4.6.3.stable...`

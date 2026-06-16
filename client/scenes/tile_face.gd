@@ -1,5 +1,7 @@
 class_name TileFace
 extends Control
+
+const Tile = preload("res://core/tile.gd")
 ## A single domino tile rendered with _draw() — no image assets (PHASE_2_PLAN.md
 ## §6.1, ADR-001 procedural art). Used for hand tiles (interactive), the board
 ## chain, and face-down opponent backs.

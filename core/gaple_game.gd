@@ -1,5 +1,10 @@
 class_name GapleGame
 extends RefCounted
+
+const GameState  = preload("res://core/game_state.gd")
+const DominoSet  = preload("res://core/domino_set.gd")
+const Tile       = preload("res://core/tile.gd")
+const Legal      = preload("res://core/legal.gd")
 ## Authoritative Gaple rules engine (ADR-003). Pure: no Node/scene/net/UI, all
 ## randomness via a seeded RNG. The server and client share this exact code.
 ##
@@ -52,7 +57,7 @@ static func new_round(num_players: int, rng_seed: int, opener_override: int = -1
 		s.current_seat = opener["seat"]
 		s.forced_opening_tile = opener["tile_id"]
 
-	var g := GapleGame.new()
+	var g = load("res://core/gaple_game.gd").new()
 	g.state = s
 	return g
 

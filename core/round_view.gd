@@ -1,5 +1,8 @@
 class_name RoundView
 extends RefCounted
+
+const GapleGame = preload("res://core/gaple_game.gd")
+const Protocol  = preload("res://core/protocol.gd")
 ## Pure helper (ADR-003) shared by the local driver and the network Room: turns
 ## engine events into wire messages and builds the round-start announce set.
 ## Keeping this in one tested place is what stops local and online play from

@@ -1,5 +1,12 @@
 class_name Room
 extends Node
+
+const GameState  = preload("res://core/game_state.gd")
+const Transport  = preload("res://server/transport.gd")
+const GapleGame  = preload("res://core/gaple_game.gd")
+const BotPolicy  = preload("res://core/bot_policy.gd")
+const Protocol   = preload("res://core/protocol.gd")
+const RoundView  = preload("res://core/round_view.gd")
 ## One game room: lobby + round orchestration, authoritative over all state
 ## (ADR-002). Validates every intent with GapleGame.apply, drives bots and stuck
 ## seats itself, and broadcasts hidden-information-safe events via the injected

@@ -1,5 +1,10 @@
 class_name LocalGameDriver
 extends Node
+
+const GapleGame  = preload("res://core/gaple_game.gd")
+const BotPolicy  = preload("res://core/bot_policy.gd")
+const RoundView  = preload("res://core/round_view.gd")
+const Protocol   = preload("res://core/protocol.gd")
 ## Drives an offline round against bots and emits the same wire messages the
 ## network path will (PHASE_2_PLAN.md §5). The UI listens to `event_received`
 ## and never touches the engine directly, so Phase 4 swaps this for a real

@@ -1,5 +1,9 @@
 class_name ServerMain
 extends Node
+
+const GameServer = preload("res://server/game_server.gd")
+const WsTransport = preload("res://server/ws_transport.gd")
+const Protocol   = preload("res://core/protocol.gd")
 ## Headless WebSocket front-end (PHASE_3_PLAN.md §4). Accepts raw WebSocket
 ## connections via TCPServer + WebSocketPeer.accept_stream (so browsers and any
 ## standard WS client speak clean JSON), polls them each frame, and feeds

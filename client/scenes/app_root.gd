@@ -1,5 +1,10 @@
 class_name AppRoot
 extends Control
+
+const NetworkConnection = preload("res://client/net/connection.gd")
+const LobbyScreen       = preload("res://client/scenes/lobby_screen.gd")
+const GameTable         = preload("res://client/scenes/game_table.gd")
+const Protocol          = preload("res://core/protocol.gd")
 ## Screen manager: menu ↔ lobby ↔ game_table, plus the local practice path.
 ## Phase 4 replaces the Phase 2 minimal shell (PHASE_4_PLAN.md §7).
 

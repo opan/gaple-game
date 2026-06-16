@@ -1,5 +1,7 @@
 class_name DominoSet
 extends RefCounted
+
+const Tile = preload("res://core/tile.gd")
 ## The double-six domino set: 28 unique tiles, plus a deterministic shuffle.
 ## Pure (ADR-003): all randomness comes from an injected, seeded RNG.
 

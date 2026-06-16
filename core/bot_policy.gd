@@ -1,5 +1,7 @@
 class_name BotPolicy
 extends RefCounted
+
+const Tile = preload("res://core/tile.gd")
 ## Server/driver-side bot move selection (ADR-004). Pure (ADR-003): sees only
 ## what a human in that seat sees — own hand + public state — never hidden info.
 ##

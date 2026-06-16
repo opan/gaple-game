@@ -1,5 +1,7 @@
 class_name OpponentSeat
 extends Control
+
+const TileFace = preload("res://client/scenes/tile_face.gd")
 ## A non-local seat: name, remaining tile count, and a neat row/column of
 ## face-down backs (PHASE_2_PLAN.md §7). TOP shows vertical backs in a row;
 ## LEFT/RIGHT show horizontal (lying) backs in a column. A gold border marks
