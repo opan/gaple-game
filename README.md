@@ -20,6 +20,25 @@ the exact rules.
 - **Godot 4.6.3** (stable). Pinned — keep CI and the server Dockerfile in sync.
   - macOS: `brew install --cask godot`, then optionally symlink the CLI:
     `ln -sf /Applications/Godot.app/Contents/MacOS/Godot /opt/homebrew/bin/godot`
+  - Windows + WSL2 (Ubuntu): download the **Linux** build, not the Windows one,
+    so the headless CLI runs natively inside WSL. Use the standard build (not
+    `_mono`) since this project is plain GDScript:
+    ```sh
+    sudo apt-get update && sudo apt-get install -y unzip
+    cd /tmp
+    curl -L -o godot.zip \
+      https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip
+    unzip godot.zip
+    sudo install -m 755 Godot_v4.6.3-stable_linux.x86_64 /usr/local/bin/godot
+    ```
+    - The export templates are needed for `make web`. Install them once via the
+      editor (Editor → Manage Export Templates → Download) or drop the
+      `4.6.3.stable` template pack into `~/.local/share/godot/export_templates/`.
+    - The headless server and the full test suite run inside WSL with no extra
+      setup. To open the **editor** GUI (`make client`), you need WSLg — included
+      in Windows 11 and recent Windows 10; run `wslg --version` to confirm, then
+      `godot --editor` works. Otherwise run the editor from a native Windows
+      Godot install instead.
   - Verify: `godot --version` → `4.6.3.stable...`
 - **Python 3** (for the local web server)
 - **Docker** (optional, for running the server as a container)

@@ -1,4 +1,3 @@
-class_name Sfx
 extends Node
 ## SFX autoload. Plays one of five CC0 sounds keyed by name.
 ## Add .ogg files to res://assets/audio/{deal,place,pass,win,lose}.ogg.
