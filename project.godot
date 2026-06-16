@@ -1,6 +1,10 @@
 ; Engine configuration file.
-; Gaple — single Godot project for client + headless server.
-; Godot 4.6.3. See PLAN.md and CLAUDE.md.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
 
@@ -10,9 +14,14 @@ config/name="Gaple"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 
-[editor_plugins]
+[audio]
 
-enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+buses/default_bus_layout="res://assets/audio/audio_bus_layout.tres"
+
+[autoload]
+
+Net="*res://client/net/connection.gd"
+Sfx="*res://client/sfx.gd"
 
 [display]
 
@@ -21,14 +30,9 @@ window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
-[autoload]
+[editor_plugins]
 
-Net="*res://client/net/connection.gd"
-Sfx="*res://client/sfx.gd"
-
-[audio]
-
-buses/default_bus_layout="res://assets/audio/audio_bus_layout.tres"
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
 
 [rendering]
 

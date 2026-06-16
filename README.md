@@ -31,9 +31,20 @@ the exact rules.
     unzip godot.zip
     sudo install -m 755 Godot_v4.6.3-stable_linux.x86_64 /usr/local/bin/godot
     ```
-    - The export templates are needed for `make web`. Install them once via the
-      editor (Editor → Manage Export Templates → Download) or drop the
-      `4.6.3.stable` template pack into `~/.local/share/godot/export_templates/`.
+    - The export templates are needed for `make web` / `make serve`. Install
+      them once — only the two web files are required (~30 MB vs ~1 GB for all
+      platforms):
+      ```sh
+      cd /tmp
+      curl -L -o export_templates.tpz \
+        https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_export_templates.tpz
+      mkdir -p ~/.local/share/godot/export_templates/4.6.3.stable
+      cd ~/.local/share/godot/export_templates/4.6.3.stable
+      unzip /tmp/export_templates.tpz templates/web_debug.zip templates/web_release.zip
+      mv templates/web_debug.zip web_debug.zip
+      mv templates/web_release.zip web_release.zip
+      rmdir templates
+      ```
     - The headless server and the full test suite run inside WSL with no extra
       setup — they need no display. To open the **editor** GUI (`make client`),
       you need WSLg — included in Windows 11 and recent Windows 10. Confirm it's
