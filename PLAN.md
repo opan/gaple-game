@@ -101,7 +101,7 @@ Wire format for a tile is always its integer `id` (0..27), ordering: (0,0)=0,
 ### 2.2 `core/game_state.gd` — `class_name GameState`
 
 ```gdscript
-const HAND_SIZE := 5            # R4 — single source of truth for deal size
+const HAND_SIZE := 7            # R4 — single source of truth for deal size
 const TURN_TIMEOUT_SEC := 30
 
 var seed: int                   # RNG seed used for this round (replayable)
@@ -190,11 +190,11 @@ Required unit tests (minimum set; one test file per area):
 | Test | Asserts |
 |---|---|
 | `test_tile.gd` | normalization (5,2)→(2,5); `to_id`/`from_id` round-trip for all 28; `matches`/`other_side` |
-| `test_deal.gd` | 28 unique tiles; deal gives `HAND_SIZE`=5 each for N=2,3,4; boneyard = 28−5N; same seed ⇒ same deal; different seed ⇒ different deal |
+| `test_deal.gd` | 28 unique tiles; deal gives `HAND_SIZE`=7 each for N=2,3,4; boneyard = 28−7N; no hand >5 doubles (R6 redeal); same seed ⇒ same deal; different seed ⇒ different deal |
 | `test_opening.gd` | highest double opens and the opening tile is forced; no-doubles fallback (highest pip sum, documented tie-breaks) |
 | `test_rules.gd` | legal_moves correctness on both ends; double-end choice honored; reject: out-of-turn, tile-not-in-hand, non-matching end, voluntary pass with legal move available; turn advances clockwise skipping nothing (2,3,4 players) |
 | `test_end.gd` | win by last tile fires `round_over{reason:DOMINO}`; full pass cycle fires `round_over{reason:BLOCKED}` |
-| `test_blocked.gd` | blocked winner = lowest pip count; both tie-breakers from GAME_RULES §6.2 with hand-constructed fixtures |
+| `test_blocked.gd` | blocked (gapleh) winner = fewest tiles; balak-weighted-value and clockwise tie-breakers from GAME_RULES §6.2 with hand-constructed fixtures |
 | `test_scoring.gd` | winner 0, others own pips; abort produces no scores |
 | `test_serialization.gd` | `to_dict`/`from_dict` round-trip equality mid-game; `public_dict` contains **no** hand contents, only counts; `hand_dict(s)` only seat s |
 | `test_bot.gd` | (Phase 2) policy priorities: winning move > double > highest pips; bot never returns an illegal move over 1000 random seeded games |
@@ -361,7 +361,7 @@ Acceptance criteria:
                   │  drop ends   │
                   └──────────────┘
               ╭─ fanned hand of the user ─╮   ← bottom, PoV per whiteboard;
-                 5 tiles, arc fan, hover      always the local player
+                 7 tiles, arc fan, hover      always the local player
                  raises a tile slightly
 ```
 

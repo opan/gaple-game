@@ -19,12 +19,17 @@ domino set. The following requirements were captured from the design whiteboard
 - **R3.** Once a game starts, **no one can join mid-game**. Late arrivals must
   wait until the game ends — either by finishing naturally or by the host (the
   user who created the room) ending it manually.
-- **R4.** At the start of a round, **each player is dealt exactly 5 tiles**.
-  (Note: traditional Gaple deals 7 tiles to 4 players; the whiteboard explicitly
-  specifies 5, so 5 is the default. Keep the deal size as a single constant
-  `HAND_SIZE = 5` so it can be made configurable later.)
+- **R4.** At the start of a round, **each player is dealt exactly 7 tiles**
+  (traditional Gaple). Keep the deal size as a single constant `HAND_SIZE = 7`
+  so it can be made configurable later. (Historical note: an earlier whiteboard
+  draft specified 5; the authoritative ruleset uses 7. With 4 players, 7×4 = 28
+  consumes the entire set, so there is no boneyard at a full table.)
 - **R5.** The game is based on the traditional Indonesian card/domino game named
   "Gaple".
+- **R6.** **Unfair-hand redeal:** if, after dealing, any player holds **more
+  than 5 balak** (doubles) — i.e. 6 or 7 of the 7 doubles — the round is
+  considered unwinnable for the others and is **redealt** (reshuffle + deal
+  again) until no player holds more than 5 doubles.
 
 ## 2. Equipment
 
@@ -38,11 +43,15 @@ domino set. The following requirements were captured from the design whiteboard
 
 1. Player count `N` is 2, 3, or 4 (humans + bots combined, per R2).
 2. Shuffle all 28 tiles with a seeded RNG (the seed is recorded for replay/audit).
-3. Deal `HAND_SIZE = 5` tiles to each player, one at a time, clockwise starting
-   from the seat after the dealer. Remaining tiles (`28 − 5N`) form the
+3. Deal `HAND_SIZE = 7` tiles to each player, one at a time, clockwise starting
+   from the seat after the dealer. Remaining tiles (`28 − 7N`) form the
    **boneyard** and are **never used** for the rest of the round (classic Gaple
-   has no drawing).
-4. Seats are ordered clockwise: seat 0 = bottom (user/host), seat 1 = right,
+   has no drawing). At a full 4-player table the boneyard is empty (`28 − 28`).
+4. **Redeal check (R6):** if any player holds more than 5 doubles, discard the
+   deal and repeat from step 2 with the next shuffle. Determinism is preserved
+   by drawing each reshuffle from the same seeded RNG (so a given seed always
+   yields the same final accepted deal).
+5. Seats are ordered clockwise: seat 0 = bottom (user/host), seat 1 = right,
    seat 2 = top, seat 3 = left. With fewer than 4 players, unused seats are
    empty and skipped (see §8 seat mapping).
 
@@ -67,10 +76,17 @@ domino set. The following requirements were captured from the design whiteboard
 4. If a tile can legally be played on **both** ends, the player chooses the end.
 5. Doubles are placed on the line like any other tile (no spinners/branching —
    Gaple uses a single line only).
-6. **Pass:** if a player has no playable tile, they must pass. Passing is
-   **forced and automatic** — the engine detects it; the player cannot pass
-   voluntarily while holding a playable tile.
-7. There is **no drawing** from the boneyard at any time.
+6. **Draw from boneyard:** if a player has no playable tile and the boneyard is
+   not empty, they **must draw one tile at a time** until they draw a tile they
+   can legally play (and must then play it on that same turn) or the boneyard
+   is exhausted (then they pass). Drawing is forced and automatic — the engine
+   handles it; a player may not pass voluntarily while the boneyard still has
+   tiles. Each drawn tile is visible only to the drawing player.
+7. **Pass:** if a player has no playable tile **and the boneyard is empty**,
+   they must pass. Passing is forced and automatic. A player cannot pass
+   voluntarily while holding a playable tile or while the boneyard is non-empty.
+8. At a full 4-player table the boneyard starts empty (7×4 = 28), so rule 6
+   never applies and behaviour is identical to classic no-draw Gaple.
 
 ## 6. Ending a round
 
@@ -78,11 +94,15 @@ A round ends in one of three ways:
 
 1. **Domino (win by emptying hand):** a player plays their last tile. That
    player wins the round immediately.
-2. **Blocked game (locked):** every player passes consecutively (a full cycle of
-   passes with no tile played). The winner is the player with the **lowest total
-   pip count** in hand. Tie-break: among tied players, the one holding the tile
-   with the lowest single-tile pip sum wins; if still tied, the tied player
-   closest (clockwise) after the last player who placed a tile wins.
+2. **Blocked game (gapleh / locked):** every player passes consecutively (a full
+   cycle of passes with no tile played). The winner is the player holding the
+   **fewest tiles** in hand. Tie-breaks, in order:
+   1. **Lowest balak-weighted value.** Sum the held tiles, where each non-double
+      counts **1**, and each double (balak) counts **2** — *except* a player who
+      also holds at least one tile with a **0** on either side counts every
+      double as **1**. Lowest sum wins.
+   2. **Clockwise-nearest.** If still tied, the tied player closest (clockwise)
+      after the last player who placed a tile wins.
 3. **Manual end (host action, per R3):** the host may end the game at any time.
    The round is **void** — no winner, no score is recorded — and the room
    returns to the lobby.

@@ -16,6 +16,8 @@ const Protocol  = preload("res://core/protocol.gd")
 ## turn_started only (-1 = no timer, e.g. local play).
 static func to_wire(game: GapleGame, ev: Dictionary, scoreboard: Array, deadline_ms: int = -1) -> Dictionary:
 	match ev["type"]:
+		"tile_drawn":
+			return Protocol.from_engine_event(ev)
 		"turn_started":
 			return Protocol.from_engine_event(ev, {"deadline_unix_ms": deadline_ms})
 		"round_over":

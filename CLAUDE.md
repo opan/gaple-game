@@ -33,9 +33,9 @@ Precedence on rules questions: `docs/GAME_RULES.md` > `PLAN.md` > your judgment.
 If the rules doc is ambiguous, fix the doc first, then the code.
 
 - `docs/GAME_RULES.md` — exact game rules the engine implements, including the
-  whiteboard requirements R1–R5 (4-seat table, min 2 players, no mid-game
-  joins, 5-tile deal, host can end manually). Tie-breakers, scoring, seat
-  mapping, and lifecycle are all specified here.
+  requirements R1–R6 (4-seat table, min 2 players, no mid-game joins, 7-tile
+  deal, host can end manually, redeal on >5 doubles). Tie-breakers, scoring,
+  seat mapping, and lifecycle are all specified here.
 - `PLAN.md` — phased implementation plan: repo layout, core class signatures
   (§2), the full client↔server JSON protocol (§6), UI layout spec (§7.1),
   required unit tests, acceptance criteria per phase.
@@ -66,9 +66,8 @@ If the rules doc is ambiguous, fix the doc first, then the code.
   renders from events, never from direct engine state.
 - **Tiles on the wire are integer ids 0..27** (canonical ordering defined in
   `PLAN.md` §2.1). A tile is always stored normalized as `(low, high)`.
-- **Key constants live in `core/game_state.gd`:** `HAND_SIZE = 5` (whiteboard
-  requirement — traditional Gaple uses 7; never hardcode the deal size
-  elsewhere), `TURN_TIMEOUT_SEC = 30`.
+- **Key constants live in `core/game_state.gd`:** `HAND_SIZE = 7` (traditional
+  Gaple deal; never hardcode the deal size elsewhere), `TURN_TIMEOUT_SEC = 30`.
 
 ## Conventions
 

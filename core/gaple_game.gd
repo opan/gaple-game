@@ -22,6 +22,11 @@ const Legal      = preload("res://core/legal.gd")
 
 var state: GameState
 
+## Doubles a single hand may hold before the deal is rejected (GAME_RULES R6).
+const MAX_DOUBLES_ALLOWED := 5
+## Safety cap on redeals; far beyond what any seed needs in practice.
+const MAX_REDEALS := 100
+
 
 ## Start a fresh round. `opener_override` = the previous round's winner seat for
 ## a "play again" (free open, GAME_RULES §4.2); leave -1 for round 1 (forced
@@ -31,22 +36,23 @@ static func new_round(num_players: int, rng_seed: int, opener_override: int = -1
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = rng_seed
-	var deck := DominoSet.shuffled(rng)
 
+	# Deal, redealing on an unfair hand (>5 doubles, GAME_RULES R6/§3.4). Each
+	# reshuffle is drawn from the same seeded rng, so a seed yields a fixed final
+	# deal; the cap guarantees termination in the astronomically rare worst case.
 	var hands: Array = []
-	for _i in range(num_players):
-		hands.append([])
-	# Deal one at a time, clockwise (GAME_RULES §3.3).
-	var idx := 0
-	for _round in range(GameState.HAND_SIZE):
-		for seat in range(num_players):
-			hands[seat].append(deck[idx])
-			idx += 1
+	var deck: Array = []
+	for _attempt in range(MAX_REDEALS):
+		deck = DominoSet.shuffled(rng)
+		hands = _deal(deck, num_players)
+		if not _needs_redeal(hands):
+			break
 
 	var s := GameState.new()
 	s.rng_seed = rng_seed
 	s.num_players = num_players
 	s.hands = hands
+	s.boneyard = deck.slice(GameState.HAND_SIZE * num_players)
 	s.phase = GameState.Phase.DEALT
 
 	if opener_override >= 0:
@@ -89,6 +95,36 @@ static func _opener_better(a: Tile, b: Tile) -> bool:
 	if a.pips() != b.pips():
 		return a.pips() > b.pips()
 	return a.high > b.high
+
+
+## Deal HAND_SIZE tiles per seat, one at a time clockwise (GAME_RULES §3.3).
+static func _deal(deck: Array, num_players: int) -> Array:
+	var hands: Array = []
+	for _i in range(num_players):
+		hands.append([])
+	var idx := 0
+	for _round in range(GameState.HAND_SIZE):
+		for seat in range(num_players):
+			hands[seat].append(deck[idx])
+			idx += 1
+	return hands
+
+
+## True if any seat holds more than MAX_DOUBLES_ALLOWED doubles (GAME_RULES R6).
+static func _needs_redeal(hands: Array) -> bool:
+	for hand in hands:
+		if count_doubles(hand) > MAX_DOUBLES_ALLOWED:
+			return true
+	return false
+
+
+## Number of doubles (balak) in a hand.
+static func count_doubles(hand: Array) -> int:
+	var n := 0
+	for t: Tile in hand:
+		if t.is_double():
+			n += 1
+	return n
 
 
 ## Legal moves for `seat` right now. Each move: { "tile_id": int, "end": "L"|"R" }.
@@ -190,8 +226,32 @@ func _do_play(seat: int, intent: Dictionary) -> Dictionary:
 
 
 func _do_pass(seat: int) -> Dictionary:
+	var events: Array = []
+
+	# Draw phase: pull tiles one at a time until a playable one is found or
+	# the boneyard is exhausted (GAME_RULES §5.6). Drawing is forced and
+	# automatic; the engine resolves it in one apply() call.
+	while not state.boneyard.is_empty():
+		var drawn: Tile = state.boneyard.pop_front()
+		state.hands[seat].append(drawn)
+		events.append({"type": "tile_drawn", "seat": seat, "tile_id": drawn.to_id()})
+
+		var moves := legal_moves(seat)
+		if not moves.is_empty():
+			# Must play the drawn tile immediately (§5.6); pick its first legal end.
+			for m in moves:
+				if m["tile_id"] == drawn.to_id():
+					var play_result := _do_play(seat, {
+						"type": "play", "seat": seat,
+						"tile_id": m["tile_id"], "end": m["end"],
+					})
+					events.append_array(play_result["events"])
+					return _ok(events)
+			# Drawn tile not in moves (shouldn't happen; fall through to keep drawing).
+
+	# Pass phase: boneyard empty, still no playable tile (GAME_RULES §5.7).
 	state.consecutive_passes += 1
-	var events: Array = [{"type": "player_passed", "seat": seat}]
+	events.append({"type": "player_passed", "seat": seat})
 
 	# A full cycle of passes with no tile placed = blocked game (GAME_RULES §6.2).
 	if state.consecutive_passes >= state.num_players:
@@ -210,32 +270,30 @@ func _advance_turn(events: Array) -> void:
 	events.append({"type": "turn_started", "seat": state.current_seat})
 
 
-## Blocked-game winner (GAME_RULES §6.2): lowest hand pip total; tie → lowest
-## single-tile pip sum; still tied → first tied seat clockwise after the last
-## placer.
+## Blocked-game / gapleh winner (GAME_RULES §6.2): fewest tiles in hand; tie →
+## lowest balak-weighted value; still tied → first tied seat clockwise after the
+## last placer.
 static func blocked_winner(s: GameState) -> int:
-	var min_total := 1 << 30
+	var min_count := 1 << 30
 	var tied: Array = []
 	for seat in range(s.num_players):
-		var total := _hand_pips(s.hands[seat])
-		if total < min_total:
-			min_total = total
+		var count: int = s.hands[seat].size()
+		if count < min_count:
+			min_count = count
 			tied = [seat]
-		elif total == min_total:
+		elif count == min_count:
 			tied.append(seat)
 	if tied.size() == 1:
 		return tied[0]
 
-	var min_lowest := 1 << 30
+	var min_value := 1 << 30
 	var tied2: Array = []
 	for seat in tied:
-		var lowest := 1 << 30
-		for t: Tile in s.hands[seat]:
-			lowest = min(lowest, t.pips())
-		if lowest < min_lowest:
-			min_lowest = lowest
+		var value := _blocked_value(s.hands[seat])
+		if value < min_value:
+			min_value = value
 			tied2 = [seat]
-		elif lowest == min_lowest:
+		elif value == min_value:
 			tied2.append(seat)
 	if tied2.size() == 1:
 		return tied2[0]
@@ -245,6 +303,22 @@ static func blocked_winner(s: GameState) -> int:
 		if seat in tied2:
 			return seat
 	return tied2[0]
+
+
+## Balak-weighted hand value for the gapleh tie-break (GAME_RULES §6.2, rule 8):
+## non-doubles count 1; doubles count 2, but only 1 if the hand also holds any
+## tile with a 0 side.
+static func _blocked_value(hand: Array) -> int:
+	var has_zero := false
+	for t: Tile in hand:
+		if t.low == 0:           # canonical (low, high) → a 0 side means low == 0
+			has_zero = true
+			break
+	var double_weight := 1 if has_zero else 2
+	var value := 0
+	for t: Tile in hand:
+		value += double_weight if t.is_double() else 1
+	return value
 
 
 ## Per-round scores (GAME_RULES §7): winner 0, everyone else their own hand pip
