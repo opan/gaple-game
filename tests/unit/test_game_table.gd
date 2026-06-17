@@ -3,6 +3,9 @@ extends GutTest
 ## the human to completion without errors, then shows the round-over overlay.
 ## (PHASE_2_PLAN.md §11 — the headless-verifiable parts.)
 
+const GameTable    = preload("res://client/scenes/game_table.gd")
+const OpponentSeat = preload("res://client/scenes/opponent_seat.gd")
+
 
 func _new_table(num_players: int, seed_value: int) -> GameTable:
 	var table := GameTable.new()

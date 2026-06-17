@@ -3,6 +3,8 @@ extends GutTest
 ## a blocked game shows the right winner, and a forced opener only enables the
 ## forced tile. (PHASE_2_PLAN.md §11)
 
+const GameTable = preload("res://client/scenes/game_table.gd")
+
 
 func _table(num_players: int, seed_value: int) -> GameTable:
 	var t := GameTable.new()
