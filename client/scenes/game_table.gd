@@ -179,6 +179,8 @@ func _on_event(msg: Dictionary) -> void:
 			_on_public_state(msg["state"])
 		Protocol.S_TILE_PLAYED:
 			_on_tile_played(msg)
+		Protocol.S_TILE_DRAWN:
+			_on_tile_drawn(msg)
 		Protocol.S_PLAYER_PASSED:
 			# The server/driver auto-passes; we react rather than send a pass.
 			if has_node("/root/Sfx"):
@@ -255,6 +257,14 @@ func _on_tile_played(msg: Dictionary) -> void:
 		_human_hand.erase(tid)
 	elif _seats.has(seat):
 		_seats[seat].set_count(msg["remaining_count"])
+
+
+func _on_tile_drawn(msg: Dictionary) -> void:
+	var tid: int = int(msg["tile_id"])
+	_human_hand.append(tid)
+	var t := Tile.from_id(tid)
+	_show_banner("You drew [%d|%d]" % [t.high, t.low])
+	_hand.set_hand(_human_hand, {})
 
 
 func _on_turn_started(msg: Dictionary) -> void:
@@ -370,7 +380,9 @@ func _to_ints(arr: Array) -> Array:
 
 func _build_seats(n: int) -> void:
 	for s in _seats:
-		_seats[s].queue_free()
+		var os: OpponentSeat = _seats[s]
+		remove_child(os)
+		os.free()
 	_seats.clear()
 	var my: int = max(_my_seat, 0)   # -1 before hand arrives → default 0
 	for seat in range(n):

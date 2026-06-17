@@ -10,7 +10,7 @@ const Tile = preload("res://core/tile.gd")
 ## client/server layers — see docs/GAME_RULES.md §8. The line is stored left→
 ## right (index 0 = left end); left_end/right_end are the open pip values.
 
-const HAND_SIZE := 5            ## Tiles dealt per player (whiteboard R4). Single source of truth.
+const HAND_SIZE := 7            ## Tiles dealt per player (GAME_RULES R4). Single source of truth.
 const TURN_TIMEOUT_SEC := 30    ## Server turn timer (GAME_RULES §8); unused by the pure engine.
 
 enum Phase { DEALT, PLAYING, ROUND_OVER }
@@ -19,6 +19,7 @@ enum EndReason { NONE, DOMINO, BLOCKED, ABORTED }
 var rng_seed: int = 0
 var num_players: int = 0
 var hands: Array = []                  ## hands[seat] = Array of Tile
+var boneyard: Array = []               ## undealt tiles; drawn from when a player has no legal move (GAME_RULES §5.6)
 var line: Array = []                   ## Array of Tile, index 0 = left end
 var left_end: int = -1                 ## open pip value at the left end (-1 before first tile)
 var right_end: int = -1
@@ -46,6 +47,7 @@ func to_dict() -> Dictionary:
 		"rng_seed": rng_seed,
 		"num_players": num_players,
 		"hands": hand_ids,
+		"boneyard": _ids(boneyard),
 		"line": _ids(line),
 		"left_end": left_end,
 		"right_end": right_end,
@@ -66,6 +68,7 @@ static func from_dict(d: Dictionary) -> GameState:
 	s.hands = []
 	for ids in d["hands"]:
 		s.hands.append(_tiles(ids))
+	s.boneyard = _tiles(d.get("boneyard", []))
 	s.line = _tiles(d["line"])
 	s.left_end = int(d["left_end"])
 	s.right_end = int(d["right_end"])
@@ -92,6 +95,7 @@ func public_dict() -> Dictionary:
 		"right_end": right_end,
 		"current_seat": current_seat,
 		"tile_counts": counts,
+		"boneyard_count": boneyard.size(),
 		"phase": phase,
 		"winner_seat": winner_seat,
 		"end_reason": end_reason,

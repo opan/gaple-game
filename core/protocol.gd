@@ -18,6 +18,7 @@ const S_GAME_STARTED := "game_started"
 const S_HAND := "hand"
 const S_PUBLIC_STATE := "public_state"
 const S_TILE_PLAYED := "tile_played"
+const S_TILE_DRAWN := "tile_drawn"     ## private: sent only to the drawing player
 const S_PLAYER_PASSED := "player_passed"
 const S_TURN_STARTED := "turn_started"
 const S_ROUND_OVER := "round_over"
@@ -106,6 +107,10 @@ static func room_state(code: String, host_seat: int, seats: Array, phase: String
 		"phase": phase,
 		"scoreboard": scoreboard,
 	})
+
+
+static func tile_drawn(seat: int, tile_id: int) -> Dictionary:
+	return msg(S_TILE_DRAWN, {"seat": seat, "tile_id": tile_id})
 
 
 static func player_replaced_by_bot(seat: int) -> Dictionary:

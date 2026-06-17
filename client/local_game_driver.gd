@@ -115,6 +115,9 @@ func _apply(intent: Dictionary) -> void:
 		_emit(Protocol.error(Protocol.E_ILLEGAL_MOVE, res["error"]))
 		return
 	for ev: Dictionary in res["events"]:
+		# tile_drawn is private to the drawing player — never broadcast to others.
+		if ev["type"] == "tile_drawn" and int(ev["seat"]) != _human_seat:
+			continue
 		_emit(RoundView.to_wire(_game, ev, _scoreboard, -1))
 
 
